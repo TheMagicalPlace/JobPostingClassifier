@@ -25,7 +25,7 @@ class BenchmarkSuite():
     def __init__(self,X_train,X_test,y_train,y_test):
         self.X_train, self.X_test, self.y_train, self.y_test = X_train,X_test,y_train,y_test
 
-    def benchmark(self,clf,feature_names=None,target_names=None):
+    def benchmark(self,clf,feature_names=None,target_names=None,live=False):
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         print('_' * 80)
         print("Training: ")
@@ -65,6 +65,8 @@ class BenchmarkSuite():
 
         print()
         clf_descr = str(clf).split('(')[0]
+        if live:
+            return clf
         return clf_descr, score, train_time, test_time
 
     def show_results(self,plot=True):
@@ -143,3 +145,7 @@ class BenchmarkSuite():
                 plt.text(-.3, i, c)
 
             plt.show()
+
+    def random_forest(self):
+        cls = RandomForestClassifier()
+        return self.benchmark(cls,live=True)

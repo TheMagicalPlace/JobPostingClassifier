@@ -28,8 +28,10 @@ from collections import defaultdict
 
 class PrepareNBdata:
 
-    def __init__(self,filepaths : List[str] = None):
-        self.filepaths = filepaths
+    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Neutral', 'Ideal Jobs':'Ideal'}
+
+    def __init__(self,search_term : List[str]):
+        self.search_term = search_term
         self.jobs = []
         self.goodjobs_encoded = {}
         self.badjobs_encoded = {}
@@ -37,46 +39,43 @@ class PrepareNBdata:
 
     def jobdesc_preprocessing(self):
         '''Creating the objects containing the label and content'''
-        jobs_bad = os.scandir('Bad Jobs/')
-        jobs_good = os.scandir('Good_Jobs/')
-        jobs_okay = os.scandir('Neutral Jobs/')
-        jobs_ideal = os.scandir('Ideal Jobs/')
 
-        for num,job in enumerate(jobs_bad):
-            with open(f'Bad Jobs/{job.name}','r') as jobdesc:
-                self.dataset['content'].append(jobdesc.read())
-                self.dataset['label'].append('Bad')
+        paths = {}
+        job_cat_data = {}
+        for subfolder in ['Good Jobs', 'Bad Jobs', 'Neutral Jobs', 'Ideal Jobs']:
+            paths[subfolder] = os.path.join(os.getcwd(), self.search_term, 'Train', subfolder)
+            job_cat_data[subfolder] = os.scandir(os.path.join(os.getcwd(), self.search_term, 'Train', subfolder))
+        for joblabel,data in job_cat_data.items():
+            for job in data:
+                with open(os.path.join(paths[joblabel],job.name), 'r') as jobdesc:
+                    self.dataset['content'].append(jobdesc.read())
+                    self.dataset['label'].append(PrepareNBdata.job_label_associations[joblabel])
 
-        for nums, job in enumerate(jobs_good):
-            with open(f'Good_Jobs/{job.name}', 'r') as jobdesc:
-                self.dataset['content'].append(jobdesc.read())
-                self.dataset['label'].append('Good')
 
-        for num, job in enumerate(jobs_okay):
-            with open(f'Neutral Jobs/{job.name}', 'r') as jobdesc:
-                self.dataset['content'].append(jobdesc.read())
-                self.dataset['label'].append('Neutral')
+    def live_job_processing(self,directory):
 
-        for num, job in enumerate(jobs_ideal):
-            with open(f'Ideal Jobs/{job.name}', 'r') as jobdesc:
-                self.dataset['content'].append(jobdesc.read())
-                self.dataset['label'].append('Ideal')
+        with open(directory,'r') as job:
+            content = [job.read()]
+        content = self.vectorizer.transform(content)
+        content = self.ch2.transform(content)
+        label = self.rf_classify.predict(content)
+        return label
 
     def format_raw_text(self):
 
 
         X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],test_size=0.4)
 
-        vectorizer = HashingVectorizer(analyzer = 'word',stop_words='english', alternate_sign=False)
-        ch2 = SelectKBest(chi2, k=15)
+        self.vectorizer = HashingVectorizer(analyzer = 'word',stop_words='english', alternate_sign=False)
+        self.ch2 = SelectKBest(chi2, k=15)
 
         #vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5,stop_words='english')
 
-        X_train = vectorizer.transform(X_train)
-        X_test = vectorizer.transform(X_test)
+        X_train = self.vectorizer.transform(X_train)
+        X_test = self.vectorizer.transform(X_test)
 
-        self.X_train = ch2.fit_transform(X_train,y_train)
-        self.X_test = ch2.transform(X_test)
+        self.X_train = self.ch2.fit_transform(X_train,y_train)
+        self.X_test = self.ch2.transform(X_test)
         self.y_train,self.y_test = y_train,y_test
 
     def create_tokens(self):
@@ -101,12 +100,14 @@ class PrepareNBdata:
         self.jobdesc_preprocessing()
         self.format_raw_text()
         bench = BenchmarkSuite(X_train=self.X_train,y_test=self.y_test,X_test=self.X_test,y_train=self.y_train)
-        bench.show_results()
+        self.rf_classify = bench.random_forest()
+        print('')
 
 
 
-
-
+if __name__ == '__main__':
+    search = PrepareNBdata('Chemical Engineer')
+    search.model_data()
 
 
 

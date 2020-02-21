@@ -10,24 +10,27 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException
-
+import os
 
 
 
 
 class IndeedClient:
 
-    def __init__(self):
+    def __init__(self,search_term):
         try:
-            with open('jobs_data','r') as jobs:
+            with open(os.path.join(os.getcwd(),search_term,'jobs_data'),'r') as jobs:
                 self.jobinfo = json.loads(jobs.read())
         except FileNotFoundError:
             self.jobinfo = {}
+        finally:
+            self.search_term = search_term
 
 
-    def __call__(self, job_desc,location='United States',jobs_to_find=100):
+    def __call__(self,location='United States',jobs_to_find=100):
         #display = Xvfb()
         #display.start()
+        job_desc = self.search_term
         self.to_find = jobs_to_find
         self.driver_startup()
         self.navigate_to_jobs(job_desc,location)
@@ -65,6 +68,7 @@ class IndeedClient:
                 break
 
             ele.click()
+            link_id = "jobtitle"
             job_id = "vjs-jobtitle"
             company_id = "vjs-cn"
             location_id = "vjs-loc"
@@ -75,7 +79,7 @@ class IndeedClient:
             except TimeoutException:
                 continue
             info = {
-                'link' : self.driver.find_element_by_id(job_id).get_attribute("href"),
+                'link' : self.driver.find_element_by_class_name(link_id).get_attribute("href"),
                 'job name':self.driver.find_element_by_id(job_id).text,
                 'company' : self.driver.find_element_by_id(company_id).text,
                 'location' : self.driver.find_element_by_id(location_id).text,
@@ -109,12 +113,12 @@ class IndeedClient:
             i +=1
 
     def save_jobs(self):
-        with open('jobs_data','w') as job:
+        with open(os.path.join(os.getcwd(),self.search_term,'jobs_data'),'w') as job:
             d = json.dumps(self.jobinfo)
             job.write(d)
 
 #vjs-footer > div.result-link-bar-container.result-link-bar-viewjob > div > span.date.date-a11y
 if __name__ == '__main__':
 
-    test1 = IndeedClient()
-    test1('Chemical Engineer',jobs_to_find=210)
+    test1 = IndeedClient('Chemical Engineer')
+    test1(jobs_to_find=10)
