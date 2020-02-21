@@ -64,7 +64,7 @@ class PrepareNBdata:
     def format_raw_text(self):
 
 
-        X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],test_size=0.4)
+        X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],test_size=0.8)
 
         self.vectorizer = HashingVectorizer(analyzer = 'word',stop_words='english', alternate_sign=False)
         self.ch2 = SelectKBest(chi2, k=15)

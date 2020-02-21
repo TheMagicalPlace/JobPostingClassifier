@@ -14,7 +14,7 @@ class JSONProcessor:
             self.search_term = search_term
 
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
 
 
         goodj,badj = [job.name for job in os.scandir(os.path.join(self.search_term,'Train','Good Jobs'))],\
@@ -27,28 +27,24 @@ class JSONProcessor:
         neutralj += [job.name for job in os.scandir(os.path.join(self.search_term,'Results','Neutral Jobs'))]
         with open(os.path.join(os.getcwd(),self.search_term,'jobs_data'),'r') as data:
             jobdat = json.loads(data.read())
-        for jobsearchkey,job_desc in jobdat.items():
-            try:
-                os.mkdir(jobsearchkey)
-            except FileExistsError:
-                pass
-            for key,info in job_desc.items():
-                key = re.sub('/','|',key)
-                if key in goodj or key in badj or key in neutralj or key in idealj:
-                    continue
 
-                try:
-                    os.mkdir(os.path.join(os.getcwd(),jobsearchkey,'Unsorted'))
-                except FileExistsError:
-                    pass
-                with open(os.path.join(os.getcwd(),jobsearchkey,'Unsorted',key),'w') as jobfile:
-                    self.joblinks[info['link']] = os.path.join(os.getcwd(), jobsearchkey,'Unsorted', key)
-                    for _,infodat in info.items():
-                        try:
-                            jobfile.write(infodat)
-                            jobfile.write('\n\n')
-                        except TypeError:
-                            continue
+        for key,info in jobdat.items():
+            key = re.sub('/',' ',key)
+            if key in goodj or key in badj or key in neutralj or key in idealj:
+                continue
+            with open(os.path.join(os.getcwd(),self.search_term,'Unsorted',key),'w') as jobfile:
+                self.joblinks[info['link']] = os.path.join(os.getcwd(), self.search_term,'Unsorted', key)
+                for _,infodat in info.items():
+                    try:
+                        jobfile.write(infodat)
+                        jobfile.write('\n\n')
+                    except TypeError:
+                        continue
+        with open(os.path.join(os.getcwd(),self.search_term,'job_link_file'),'w') as job:
+            d = json.dumps(self.joblinks)
+            job.write(d)
+
+    def modify_json_file(self):
         with open(os.path.join(os.getcwd(),self.search_term,'job_link_file'),'w') as job:
             d = json.dumps(self.joblinks)
             job.write(d)

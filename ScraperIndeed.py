@@ -9,7 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import *
+
 import os
 
 
@@ -44,10 +45,7 @@ class IndeedClient:
 
     def navigate_to_jobs(self,job_desc,location='United States'):
 
-        try:
-            self.jobinfo[job_desc]
-        except KeyError:
-            self.jobinfo[job_desc] ={}
+
         WebDriverWait(self.driver,120).until(EC.element_to_be_clickable((By.ID,'text-input-what')))
         elem = self.driver.find_element_by_id('text-input-what')
         elem.send_keys(job_desc)
@@ -59,27 +57,65 @@ class IndeedClient:
         time.sleep(3)
 
     def get_jobs_on_page(self,desc):
-
+        window_before = self.driver.window_handles[0]
+        window_before_title = self.driver.title
         #WebDriverWait(self.driver,120).until(EC.element_to_be_clickable((By.ID,job_id)))
         elem = self.driver.find_elements_by_class_name('title')
-        for ele in elem:
-            if len(self.jobinfo[desc].keys()) >= self.to_find:
+        containers = self.driver.find_elements_by_class_name('jobsearch-SerpJobCard')
+        seen = []
+        for ele,container in zip(elem,containers):
+            if len(self.jobinfo.keys()) >= self.to_find:
                 print('exited')
                 break
 
-            ele.click()
+            if 'Hiring Event' in ele.text:
+                continue
+            print(self.driver.title,window_before_title)
+            if self.driver.title != window_before_title:
+                self.driver.switch_to.window(window_before)
+            base = container.get_attribute('id')
+            xpath = f"//div[@id = {base}]/table/tbody/tr/td/span"
+            print(xpath,ele.text)
+            try:
+                t = self.driver.find_element_by_xpath(xpath)
+                print(t.text)
+            except NoSuchElementException:
+                pass
+            try:
+                ele.click()
+            except ElementClickInterceptedException:
+                ele.send_keys(Keys.ESCAPE)
+                ele.click()
+
             link_id = "jobtitle"
             job_id = "vjs-jobtitle"
             company_id = "vjs-cn"
             location_id = "vjs-loc"
             desc_id = "vjs-desc"
-
             try:
                 WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable((By.ID, desc_id)))
             except TimeoutException:
                 continue
+            n = self.driver.find_element_by_id(job_id).text
+            e = self.driver.find_elements_by_partial_link_text(n)
+
+            if len(e) > 1:
+                print(seen)
+                for lnk in e:
+                    lnk = lnk.get_attribute("href")
+                    if lnk in seen:
+                        continue
+                    else:
+                        seen.append(lnk)
+                        link = lnk
+                        break
+            elif len(e) == 0 : continue
+            else:
+                link = e[0].get_attribute("href")
+            print(link)
+
             info = {
-                'link' : self.driver.find_element_by_class_name(link_id).get_attribute("href"),
+                'link' : link,
                 'job name':self.driver.find_element_by_id(job_id).text,
                 'company' : self.driver.find_element_by_id(company_id).text,
                 'location' : self.driver.find_element_by_id(location_id).text,
@@ -87,13 +123,12 @@ class IndeedClient:
                 'date_posted' : 'n/a'
                     }
             hash_string = info['job name']+' - '+info['company']
-            (self.jobinfo[desc])[hash_string] = info
-
+            self.jobinfo[hash_string] = info
         self.save_jobs()
 
     def navigate_through_pages(self,job_desc):
         i = 0
-        while len(self.jobinfo[job_desc].keys()) < self.to_find:
+        while len(self.jobinfo.keys()) < self.to_find:
             print('\n')
             print('page ' + str(i))
             print('\n')
