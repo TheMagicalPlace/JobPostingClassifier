@@ -28,9 +28,9 @@ from collections import defaultdict
 
 class PrepareNBdata:
 
-    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Neutral', 'Ideal Jobs':'Ideal'}
+    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Neutral', 'Ideal Jobs':'Good'}
 
-    def __init__(self,search_term : List[str]):
+    def __init__(self,search_term : str):
         self.search_term = search_term
         self.jobs = []
         self.goodjobs_encoded = {}
@@ -64,14 +64,14 @@ class PrepareNBdata:
     def format_raw_text(self):
 
 
-        X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],test_size=0.8)
+        X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],test_size=0.5)
 
         self.vectorizer = HashingVectorizer(analyzer = 'word',stop_words='english', alternate_sign=False)
-        self.ch2 = SelectKBest(chi2, k=15)
+        self.ch2 = SelectKBest(chi2, k=50)
 
         #vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5,stop_words='english')
 
-        X_train = self.vectorizer.transform(X_train)
+        X_train = self.vectorizer.fit_transform(X_train)
         X_test = self.vectorizer.transform(X_test)
 
         self.X_train = self.ch2.fit_transform(X_train,y_train)
@@ -100,13 +100,14 @@ class PrepareNBdata:
         self.jobdesc_preprocessing()
         self.format_raw_text()
         bench = BenchmarkSuite(X_train=self.X_train,y_test=self.y_test,X_test=self.X_test,y_train=self.y_train)
+        bench.show_results()
         self.rf_classify = bench.random_forest()
         print('')
 
 
 
 if __name__ == '__main__':
-    search = PrepareNBdata('Chemical Engineer')
+    search = PrepareNBdata('Entry Level Computer Programmer')
     search.model_data()
 
 

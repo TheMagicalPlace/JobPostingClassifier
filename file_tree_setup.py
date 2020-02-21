@@ -21,6 +21,10 @@ def file_setup(search_term):
             os.mkdir(os.path.join(os.getcwd(), search_term, 'Unsorted'))
         except FileExistsError:
             pass
+        try:
+            os.mkdir(os.path.join(os.getcwd(), search_term, 'Discarded'))
+        except FileExistsError:
+            pass
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ class JSONProcessor:
         badj += [job.name for job in os.scandir(os.path.join(self.search_term,'Results','Bad Jobs'))]
         idealj += [job.name for job in os.scandir(os.path.join(self.search_term,'Results','Ideal Jobs'))]
         neutralj += [job.name for job in os.scandir(os.path.join(self.search_term,'Results','Neutral Jobs'))]
+        neutralj += [job.name for job in os.scandir(os.path.join(self.search_term, 'Discarded'))]
         with open(os.path.join(os.getcwd(),self.search_term,'jobs_data'),'r') as data:
             jobdat = json.loads(data.read())
 

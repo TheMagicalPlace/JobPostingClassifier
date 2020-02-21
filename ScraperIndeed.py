@@ -18,17 +18,28 @@ import os
 
 class IndeedClient:
 
-    def __init__(self,search_term):
-        try:
-            with open(os.path.join(os.getcwd(),search_term,'jobs_data'),'r') as jobs:
-                self.jobinfo = json.loads(jobs.read())
-        except FileNotFoundError:
-            self.jobinfo = {}
-        finally:
+    def __init__(self,search_term,file_term = None):
+        if file_term is not None:
             self.search_term = search_term
+            self.file_term = file_term
+            try:
+                with open(os.path.join(os.getcwd(),file_term,'jobs_data'),'r') as jobs:
+                    self.jobinfo = json.loads(jobs.read())
+            except FileNotFoundError:
+                self.jobinfo = {}
+        else:
+            self.search_term = search_term
+            self.file_term = self.search_term
+            try:
+                with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'r') as jobs:
+                    self.jobinfo = json.loads(jobs.read())
+            except FileNotFoundError:
+                self.jobinfo = {}
+        self.last_length = len(self.jobinfo.keys())
 
 
     def __call__(self,location='United States',jobs_to_find=100):
+        self.next_length = self.last_length+jobs_to_find
         #display = Xvfb()
         #display.start()
         job_desc = self.search_term
@@ -64,23 +75,17 @@ class IndeedClient:
         containers = self.driver.find_elements_by_class_name('jobsearch-SerpJobCard')
         seen = []
         for ele,container in zip(elem,containers):
-            if len(self.jobinfo.keys()) >= self.to_find:
+            if self.last_length >= self.next_length:
                 print('exited')
                 break
 
             if 'Hiring Event' in ele.text:
                 continue
-            print(self.driver.title,window_before_title)
-            if self.driver.title != window_before_title:
-                self.driver.switch_to.window(window_before)
+
             base = container.get_attribute('id')
             xpath = f"//div[@id = {base}]/table/tbody/tr/td/span"
             print(xpath,ele.text)
-            try:
-                t = self.driver.find_element_by_xpath(xpath)
-                print(t.text)
-            except NoSuchElementException:
-                pass
+
             try:
                 ele.click()
             except ElementClickInterceptedException:
@@ -112,7 +117,7 @@ class IndeedClient:
             elif len(e) == 0 : continue
             else:
                 link = e[0].get_attribute("href")
-            print(link)
+
 
             info = {
                 'link' : link,
@@ -124,14 +129,17 @@ class IndeedClient:
                     }
             hash_string = info['job name']+' - '+info['company']
             self.jobinfo[hash_string] = info
+
+            self.last_length +=1
         self.save_jobs()
 
     def navigate_through_pages(self,job_desc):
         i = 0
-        while len(self.jobinfo.keys()) < self.to_find:
+        while self.last_length < self.next_length:
             print('\n')
             print('page ' + str(i))
             print('\n')
+            print(self.last_length,self.next_length)
 
             try:
                 WebDriverWait(self.driver,60).until(
@@ -146,9 +154,11 @@ class IndeedClient:
             time.sleep(3)
             print('page yeet')
             i +=1
+        if self.last_length != len(self.jobinfo.keys()):
+            self.last_length = len(self.jobinfo.keys())
 
     def save_jobs(self):
-        with open(os.path.join(os.getcwd(),self.search_term,'jobs_data'),'w') as job:
+        with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'w') as job:
             d = json.dumps(self.jobinfo)
             job.write(d)
 
