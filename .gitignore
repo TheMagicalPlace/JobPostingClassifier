@@ -2,3 +2,13 @@
 /lib/
 /include/
 /bin/
+/envn/
+/GloVe/
+/encoder/
+/vectors/
+/Infersent/
+/envn2/
+/vectors/
+/Infersent/
+/Infersent/models.py
+/vectors/glove.6B.100d.magnitude
