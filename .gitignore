@@ -12,5 +12,6 @@
 /Infersent/
 /Infersent/models.py
 /vectors/glove.6B.100d.magnitude
-/Models/
 /featurization.py
+/ex.py
+/Models/

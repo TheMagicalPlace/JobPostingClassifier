@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import precision_recall_curve, f1_score, accuracy_score, roc_auc_score, confusion_matrix
 import seaborn as sns
-
+import warnings
 sns.set_palette("muted")
 from sklearn.linear_model import SGDClassifier
 from scipy import sparse
@@ -10,8 +10,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.model_selection import StratifiedKFold
-
-
+import eli5
+from featurization import *
 def adversarial_validation(X, Y, n_splits=10):
     # Combine both datasets
     sparse_merge = sparse.vstack((X, Y))
@@ -44,6 +44,7 @@ def adversarial_validation(X, Y, n_splits=10):
     print('Random Forest AUC : {:.3f}'.format(rf_auc.mean()))
 
 def calc_f1(p_and_r):
+    warnings.filterwarnings("ignore")
     p, r = p_and_r
     return (2 * p * r) / (p + r)
 
@@ -97,14 +98,15 @@ def print_model_metrics(y_test, y_test_prob, confusion=False, verbose=True, retu
 def run_log_reg(train_features, test_features, y_train, y_test, alpha=1e-4, confusion=False, return_f1=False,
                 verbose=True):
     metrics = np.zeros(5)
-    for _ in range(10):
+    for _ in range(50):
         log_reg = SGDClassifier(loss='log', alpha=alpha, n_jobs=-1, penalty='l2')
         log_reg.fit(train_features, y_train)
         y_test_prob = log_reg.predict_proba(test_features)[:, 1]
         metrics += print_model_metrics(y_test, y_test_prob, confusion=confusion, verbose=False, return_metrics=True)
-    metrics /= 10
+    metrics /= 50
     if verbose:
         print('F1: {:.3f} | Pr: {:.3f} | Re: {:.3f} | AUC: {:.3f} | Accuracy: {:.3f} \n'.format(*metrics))
+
     if return_f1:
         return f1
     return log_reg

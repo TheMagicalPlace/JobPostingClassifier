@@ -54,7 +54,7 @@ class SearchHandler:
 
 if __name__ == '__main__':
     a = False
-    results = 40
+    results = 50
     term = 'Entry Level Python Developer'
     search = SearchHandler(term, results,equivlant_to='Entry Level Computer Programmer')
     if a:
