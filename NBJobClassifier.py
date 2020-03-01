@@ -7,6 +7,7 @@ from sklearn_extensions.NLTKUtils import *
 from featurization import *
 #glove = Magnitude("./vectors/glove.6B.100d.magnitude")
 from sklearn_extensions.extended_pipeline import PipelineComponents
+from joblib import load
 def dummy(doc):
     return doc
 
@@ -27,7 +28,7 @@ def tfidf_glove(df,idf_dict):
 
 class ClassificationHandler:
 
-    job_label_associations = {'Good Jobs':1, 'Bad Jobs':-1, 'Neutral Jobs':0, 'Ideal Jobs':1}
+    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Bad', 'Ideal Jobs':'Good'}
 
     def __init__(self,search_term : str,stemmer : str = None):
         self.search_term = search_term
@@ -62,16 +63,13 @@ class ClassificationHandler:
         self.dataset = pd.DataFrame(self.dataset)
 
 
-    def live_job_processing(self,directory):
-
+    def live_job_processing(self,directory,model):
+        model = load(model)
+        model.apply_stemming = True
         with open(directory,'r') as job:
             content = [job.read()]
-        content = self.vectorizer.transform(content)
-        content = self.ch2.transform(content)
-        label = self.rf_classify.predict(content)
+        label = model.predict(content)
         return label
-
-
 
     def _split_dataset(self):
 
@@ -94,73 +92,17 @@ class ClassificationHandler:
 
 
 if __name__ == '__main__':
-    old = []
-    try:
-        with open(os.path.join(os.getcwd(), 'Models', 'model_stats.json'), 'r') as models:
-            last = json.loads(models.read())
-        os.unlink(os.path.join(os.getcwd(), 'Models', 'model_stats.json'))
-    except FileNotFoundError:
-        last = defaultdict(int)
-    for i in range(5,0,-1):
-        try:
-            with open(os.path.join(os.getcwd(), 'Models','Testing', f'model_stats_{i}.json'), 'r') as models:
-                old.append(json.loads(models.read()))
-        except FileNotFoundError:
-            if not isinstance(last, defaultdict):
-                with open(os.path.join(os.getcwd(), 'Models','Testing', f'model_stats_{i}.json'), 'w') as models:
-                    models.write(json.dumps(last))
-                old.append(last)
-            break
-    else:
-        for i in range(1,5):
-            if i == 1:
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i}.json'), 'r') as models:
-                    holder = json.loads(models.read())
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i}.json'), 'w') as models:
-                    models.write(json.dumps(last))
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i+1}.json'), 'r') as models:
-                    holder2 = json.loads(models.read())
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i+1}.json'), 'w') as models:
-                    models.write(json.dumps(holder))
-            else:
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i+1}.json'), 'r') as models:
-                    holder2 = json.loads(models.read())
-                with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_{i+1}.json'), 'w') as models:
-                    models.write(json.dumps(holder))
-            holder = holder2
 
 
-    search = ClassificationHandler('Entry Level Computer Programmer',stemmer='snowball')
-    for _ in range(100):
+    @comparison_decorator
+    def searchf(runs):
 
-        search.model_data()
-    with open(os.path.join(os.getcwd(), 'Models', 'model_stats.json'), 'r') as models:
-        models = json.loads(models.read())
+        search = ClassificationHandler('Chemical Engineer',stemmer='snowball')
+        for _ in range(runs):
+            search.model_data()
 
+    searchf(100)
 
-    clf = [k for k in models.keys()]
-    formatted = defaultdict(list)
-    maxl = max([len(mod) for mod in clf])
-    print("','".join(clf))
-    for mod in clf:
-        for i in range(0, 5):
-            if i+1 > len(old):
-                break
-            else:
-                formatted[mod].append(old[i][mod])
-    labels = ['Model','| Last ',1,2,3,4,5]
-    labels[0] = labels[0].center(maxl)
-    for i,l in enumerate(labels[2:]):
-        labels[i+2] = f'|   {labels[i+2]}  '
-    print("".join(labels))
-    print('-'*len("".join(labels)))
-    for mod in clf:
-        str = f'{mod}'
-        str = str.ljust(maxl)
-        str += f'| {models[mod]:.2f} '
-        for _ in formatted[mod][::-1]:
-            str += f'| {_:.2f} '
-        print(str)
 
 
 

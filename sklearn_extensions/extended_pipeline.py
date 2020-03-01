@@ -81,13 +81,13 @@ class ExtendedPipeline(Pipeline):
         if isinstance(classifier,str):
             self.classifier = PipelineComponents.models[classifier]
             if transformer:
-                transformer = PipelineComponents.transformers['tfidf']
-                self.name = "_".join([stemmer,vectorizer,classifier,'with_transform'])
+                transform = PipelineComponents.transformers['tfidf']
+                self.name = (classifier,"_".join([stemmer,vectorizer,'with_transform']))
                 steps = [(vectorizer,self.vectorizer),
-                         ('transformer',transformer),
+                         ('transform',transform),
                          (classifier,self.classifier)]
             else:
-                self.name = "_".join([stemmer, vectorizer, classifier])
+                self.name = (classifier,"_".join([stemmer, vectorizer]))
                 steps = [(vectorizer,self.vectorizer),
                          (classifier,self.classifier)]
 
@@ -96,12 +96,12 @@ class ExtendedPipeline(Pipeline):
             name = str(classifier)
             clf = name.split('(')[0]
             if transformer:
-                self.name = "_".join([stemmer,vectorizer,clf,'with_transform'])
+                self.name = (clf,"_".join([stemmer,vectorizer,'with_transform']))
                 steps = [(vectorizer,self.vectorizer),
-                         ('transformer',transformer),
+                         ('transform',TfidfTransformer()),
                          (clf,self.classifier)]
             else:
-                self.name = "_".join([stemmer, vectorizer, clf])
+                self.name = (clf,"_".join([stemmer, vectorizer]))
                 steps = [(vectorizer,self.vectorizer),
                          (clf,self.classifier)]
 
