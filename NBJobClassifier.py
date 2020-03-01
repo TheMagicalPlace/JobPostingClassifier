@@ -1,44 +1,12 @@
-import os
-from itertools import chain
-from collections import Counter
-import random
-from copy import deepcopy
-import numpy as np
-from matplotlib import pyplot as plt
-from typing import List,AnyStr
-from sklearn import datasets,preprocessing
-from sklearn.naive_bayes import MultinomialNB,ComplementNB,BernoulliNB
-from mlxtend.plotting import plot_decision_regions
-import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
-from sklearn.pipeline import Pipeline
-from sklearn.feature_selection import SelectFromModel
-from sklearn.feature_selection import SelectKBest, chi2
-import pandas as pd
-from benchmarks import *
-import annoy
-from sklearn.utils import shuffle
-from Infersent.models import InferSent
-import torch
-import shutil
-from utils import *
-from nltk.stem.snowball import SnowballStemmer
-from nltk.stem import PorterStemmer,WordNetLemmatizer
-from sklearn import svm
-from sklearn import datasets
+from sklearn_extensions.benchmarks import *
 from tqdm import tqdm
-from nltk import word_tokenize
-from pymagnitude import *
-
-import re
-from collections import defaultdict
 
 from SK_learn_pipelines import *
-from NLTKUtils import *
+from sklearn_extensions.NLTKUtils import *
 from featurization import *
-glove = Magnitude("./vectors/glove.6B.100d.magnitude")
-
+#glove = Magnitude("./vectors/glove.6B.100d.magnitude")
+from sklearn_extensions.extended_pipeline import PipelineComponents
 def dummy(doc):
     return doc
 
@@ -57,17 +25,19 @@ def tfidf_glove(df,idf_dict):
         vectors.append(np.average(glove_vectors, axis = 0, weights = weights))
     return np.array(vectors)
 
-class PrepareNBdata:
+class ClassificationHandler:
 
-    job_label_associations = {'Good Jobs':1, 'Bad Jobs':0, 'Neutral Jobs':0, 'Ideal Jobs':1}
+    job_label_associations = {'Good Jobs':1, 'Bad Jobs':-1, 'Neutral Jobs':0, 'Ideal Jobs':1}
 
-    def __init__(self,search_term : str):
+    def __init__(self,search_term : str,stemmer : str = None):
         self.search_term = search_term
         self.jobs = []
         self.goodjobs_encoded = {}
         self.badjobs_encoded = {}
         self.dataset = defaultdict(list)
+        self.stemmer = PipelineComponents.stemmers[stemmer]
         self._jobdesc_preprocessing()
+
 
     def _process_text(self):
         pass
@@ -86,14 +56,9 @@ class PrepareNBdata:
             for job in data:
                 with open(os.path.join(paths[joblabel],job.name), 'r') as jobdesc:
                     raw = jobdesc.readlines()[7:]
-                    raw = " ".join(raw)
-                    raw = snowball_stemmer(raw)
-                    #raw = snowball_stemmer(" ".join(raw))
-
-
-                formatted_data = raw
-                self.dataset['content'].append(formatted_data)
-                self.dataset['label'].append(PrepareNBdata.job_label_associations[joblabel])
+                    formatted_data = " ".join(raw)
+                self.dataset['content'].append(self.stemmer(formatted_data))
+                self.dataset['label'].append(ClassificationHandler.job_label_associations[joblabel])
         self.dataset = pd.DataFrame(self.dataset)
 
 
@@ -106,40 +71,21 @@ class PrepareNBdata:
         label = self.rf_classify.predict(content)
         return label
 
-    def text_processing(self):
-
-        X_train, X_test, y_train, y_test = train_test_split(self.dataset['content'], self.dataset['label'],
-                                                            test_size=0.5)
 
 
+    def _split_dataset(self):
 
-
-    def vectorize_text(self,Training=True):
-        if Training:
             train,test = train_test_split(self.dataset,test_size=0.3,stratify = self.dataset.label,shuffle=True)
-
-            y_train,y_test = train.label,test.label
-            self.vectorizer = CountVectorizer(tokenizer=dummy,preprocessor=dummy)
-            self.transformer = TfidfTransformer()
-
-
-
-
-
-            X_train = self.vectorizer.fit_transform(train.content.values)
-            X_test = self.vectorizer.transform(test.content.values)
-            self.transformer.fit(X_train, y_train)
-            #X_train = self.transformer.transform(X_train)
-            #X_test = self.transformer.transform(X_test)
+            y_train,y_test = train.label.values,test.label.values
+            X_train,X_test = train.content.values,test.content.values
 
             self.X_train,self.X_test = X_train,X_test
             self.y_train,self.y_test = y_train,y_test
 
-        else:
-            self.live_vectorizer = TfidfVectorizer(analyzer='word', stop_words='english').fit(self.dataset.content)
+
 
     def model_data(self):
-        self.vectorize_text()
+        self._split_dataset()
         bench = BenchmarkSuite(self.X_train,self.X_test,self.y_train,self.y_test)
         bench.show_results(silent=True,plot=False)
         #self.rf_classify = bench.random_forest()
@@ -160,9 +106,10 @@ if __name__ == '__main__':
             with open(os.path.join(os.getcwd(), 'Models','Testing', f'model_stats_{i}.json'), 'r') as models:
                 old.append(json.loads(models.read()))
         except FileNotFoundError:
-            with open(os.path.join(os.getcwd(), 'Models','Testing', f'model_stats_{i}.json'), 'w') as models:
-                models.write(json.dumps(last))
-            old.append(last)
+            if not isinstance(last, defaultdict):
+                with open(os.path.join(os.getcwd(), 'Models','Testing', f'model_stats_{i}.json'), 'w') as models:
+                    models.write(json.dumps(last))
+                old.append(last)
             break
     else:
         for i in range(1,5):
@@ -183,8 +130,8 @@ if __name__ == '__main__':
             holder = holder2
 
 
-    search = PrepareNBdata('Chemical Engineer')
-    for _ in range(10):
+    search = ClassificationHandler('Entry Level Computer Programmer',stemmer='snowball')
+    for _ in range(100):
 
         search.model_data()
     with open(os.path.join(os.getcwd(), 'Models', 'model_stats.json'), 'r') as models:
@@ -194,6 +141,7 @@ if __name__ == '__main__':
     clf = [k for k in models.keys()]
     formatted = defaultdict(list)
     maxl = max([len(mod) for mod in clf])
+    print("','".join(clf))
     for mod in clf:
         for i in range(0, 5):
             if i+1 > len(old):

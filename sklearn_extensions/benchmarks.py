@@ -3,25 +3,15 @@
 
 from sklearn import metrics
 from sklearn.feature_selection import SelectFromModel
-from sklearn.linear_model import RidgeClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.svm import LinearSVC
-from sklearn.linear_model import SGDClassifier
-from sklearn.linear_model import Perceptron
-from sklearn.linear_model import PassiveAggressiveClassifier
-from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neighbors import NearestCentroid
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.utils.extmath import density
 import numpy as np
 from time import time
 from matplotlib import pyplot as plt
-from joblib import dump, load
-import re
-import os
 import json
 from _collections import defaultdict
+from  sklearn_extensions.extended_pipeline import *
+import warnings
+warnings.filterwarnings("ignore")
 def trim(s):
     """Trim string to fit on terminal (assuming 80-column display)"""
     return s if len(s) <= 80 else s[:77] + "..."
@@ -44,8 +34,7 @@ class BenchmarkSuite():
         pred = clf.predict(X_test)
         test_time = time() - t0
         score = metrics.accuracy_score(y_test, pred)
-        name = str(clf)
-        name = name.split('(')[0]
+        name = clf.name
         print(f'Score : {score} | Best : {self.models[name]}')
         if score > self.models[name]:
             self.models[name] = score
@@ -53,6 +42,7 @@ class BenchmarkSuite():
             dump(clf,f'./Models/{name}')
         clf_descr = str(clf).split('(')[0]
         return clf_descr, score, train_time, test_time
+
     def benchmark(self,clf,feature_names=None,target_names=None,live=False):
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         print('_' * 80)
@@ -105,87 +95,43 @@ class BenchmarkSuite():
         return clf_descr, score, train_time, test_time
 
     def show_results(self,plot=True,silent=False):
+        models_to_run = \
+            [
+                RidgeClassifier(tol=1e-2, solver="sag"),
+                Perceptron(max_iter=50),
+                PassiveAggressiveClassifier(max_iter=50),
+                KNeighborsClassifier(n_neighbors=10),
+                RandomForestClassifier(),
+                LinearSVC(penalty='l1', dual=False,
+                          tol=1e-3),
+                LinearSVC(penalty='l2', dual=False,
+                          tol=1e-3),
+
+                SGDClassifier(alpha=.0001, max_iter=50,
+                              penalty='l1'),
+                SGDClassifier(alpha=.0001, max_iter=50,
+                              penalty='l2'),
+                SGDClassifier(alpha=.0001, max_iter=50,
+                              penalty="elasticnet"),
+                NearestCentroid(),
+                MultinomialNB(alpha=.01),
+                BernoulliNB(alpha=.01),
+                ComplementNB(alpha=.1),
+            ]
+
         benchmark = self.benchmark
         b_silent = self.benchmark_silent
         results = []
-        for clf, name in (
-                (RidgeClassifier(tol=1e-2, solver="sag"), "Ridge Classifier"),
-                (Perceptron(max_iter=50), "Perceptron"),
-                (PassiveAggressiveClassifier(max_iter=50),
-                 "Passive-Aggressive"),
-                (KNeighborsClassifier(n_neighbors=10), "kNN"),
-                (RandomForestClassifier(), "Random forest")):
-            print('=' * 80)
-            print(name)
+
+        for clf in models_to_run:
             if silent:
-                results.append(b_silent(clf))
+                pipe = ExtendedPipeline(clf,'count',transformer=False,stemmer='snowball',apply_stemming=False)
+                results.append(b_silent(pipe))
             else:
-                results.append(benchmark(clf))
-
-        for penalty in ["l2", "l1"]:
-            print('=' * 80)
-            print("%s penalty" % penalty.upper())
-            # Train Liblinear model
-            if silent:
-                results.append(b_silent(LinearSVC(penalty=penalty, dual=False,
-                                                   tol=1e-3)))
-
-                # Train SGD model
-                results.append(b_silent(SGDClassifier(alpha=.0001, max_iter=50,
-                                                       penalty=penalty)))
-            else:
-                results.append(benchmark(LinearSVC(penalty=penalty, dual=False,
-                                                   tol=1e-3)))
-
-                # Train SGD model
-                results.append(benchmark(SGDClassifier(alpha=.0001, max_iter=50,
-                                                       penalty=penalty)))
+                pipe = ExtendedPipeline(clf, 'count', transformer=False, stemmer='snowball',apply_stemming=False)
+                results.append(benchmark(pipe))
 
 
-        # Train SGD with Elastic Net penalty
-        print('=' * 80)
-        print("Elastic-Net penalty")
-        if silent:
-            results.append(b_silent(SGDClassifier(alpha=.0001, max_iter=50,
-                                                   penalty="elasticnet")))
-        else:
-            results.append(benchmark(SGDClassifier(alpha=.0001, max_iter=50,
-                                               penalty="elasticnet")))
-
-        # Train NearestCentroid without threshold
-        print('=' * 80)
-        print("NearestCentroid (aka Rocchio classifier)")
-        if silent:
-            results.append(b_silent(NearestCentroid()))
-        else:
-            results.append(benchmark(NearestCentroid()))
-
-        # Train sparse Naive Bayes classifiers
-
-        print('=' * 80)
-        print("Naive Bayes")
-        if silent:
-            results.append(b_silent(MultinomialNB(alpha=.01)))
-            results.append(b_silent(BernoulliNB(alpha=.01)))
-            results.append(b_silent(ComplementNB(alpha=.1)))
-        else:
-            results.append(benchmark(MultinomialNB(alpha=.01)))
-            results.append(benchmark(BernoulliNB(alpha=.01)))
-            results.append(benchmark(ComplementNB(alpha=.1)))
-        print('=' * 80)
-        print("LinearSVC with L1-based feature selection")
-        # The smaller C, the stronger the regularization.
-        # The more regularization, the more sparsity.
-        if silent:
-            results.append(b_silent(Pipeline([
-              ('feature_selection', SelectFromModel(LinearSVC(penalty="l1", dual=False,
-                                                              tol=1e-3))),
-              ('classification', LinearSVC(penalty="l2"))])))
-        else:
-            results.append(benchmark(Pipeline([
-                ('feature_selection', SelectFromModel(LinearSVC(penalty="l1", dual=False,
-                                                                tol=1e-3))),
-                ('classification', LinearSVC(penalty="l2"))])))
 
         indices = np.arange(len(results))
 
@@ -214,7 +160,3 @@ class BenchmarkSuite():
                 plt.text(-.3, i, c)
 
             plt.show()
-
-    def random_forest(self):
-        cls = RandomForestClassifier()
-        return self.benchmark(cls,live=True)

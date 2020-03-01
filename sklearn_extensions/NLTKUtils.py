@@ -9,9 +9,29 @@ import re
 
 
 def create_tokens(text):
+
+    to_append = []
     stop_word_regex = re.compile(
         r"((\b| )(for|is|a|the|an|as|to|and|with|in|inc|eg|etc|n/a|that|be|[A-Za-z0-9]{1})([^A-Za-z0-9]|\b))+")
     text = text.lower().strip()
+    ex = re.compile(r'(\b| )?([0-9])((-)([0-9])|\+) years?')
+    experience = re.findall(ex,text)
+    gpa = re.findall(r'(\b| )([0-9]\.[0-9])',text)
+    if experience:
+        for exp in experience:
+            base = int(exp[1])
+            if exp[2] == '+':
+                for i in range(base,base+3):
+                    to_append.append(f'{i} years')
+            elif exp[3] == '-':
+                for i in range(int(exp[1]),int(exp[4])+1):
+                    to_append.append(f'{i} years')
+    if gpa:
+        for g in gpa:
+            to_append.append(g[1])
+
+    text = re.sub(ex,' ',text)
+    text = re.sub(r'(\b| )([0-9]\.[0-9])',' ',text)
     text = re.sub(stop_word_regex, ' ', text)
 
 
@@ -24,8 +44,8 @@ def create_tokens(text):
 
     text = text.strip().split(' ')
     text = [t for t in text if t.strip() != '']
+    text += to_append
     return text
-
 
 class LemmaTokenizer:
     tag_map = defaultdict(lambda: wn.NOUN)
@@ -43,7 +63,6 @@ class LemmaTokenizerBase:
         self.wnl = WordNetLemmatizer()
     def __call__(self, doc):
         return [self.wnl.lemmatize(t) for t in create_tokens(doc)]
-
 
 class StemTokenizer:
     def __init__(self):
