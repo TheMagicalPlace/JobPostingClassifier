@@ -1,4 +1,4 @@
-"""Taken from https://scikit-learn.org/stable/auto_examples/text/plot_document_classification_20newsgroups.html#sphx-glr-auto-examples-text-plot-document-classification-20newsgroups-py"""
+"""Adapted from https://scikit-learn.org/stable/auto_examples/text/plot_document_classification_20newsgroups.html#sphx-glr-auto-examples-text-plot-document-classification-20newsgroups-py"""
 
 
 from sklearn import metrics
@@ -15,17 +15,27 @@ warnings.filterwarnings("ignore")
 def trim(s):
     """Trim string to fit on terminal (assuming 80-column display)"""
     return s if len(s) <= 80 else s[:77] + "..."
+
 class BenchmarkSuite():
 
-    def __init__(self,X_train,X_test,y_train,y_test):
+    def __init__(self,search_term,X_train,X_test,y_train,y_test,stemmer,vectorizer='count',transform=False):
+        """setting up initial data , incl. stemmer,vectorizer, transformer to be benchmarked"""
         self.X_train, self.X_test, self.y_train, self.y_test = X_train,X_test,y_train,y_test
         try:
-            with open(os.path.join(os.getcwd(),'Models','model_stats.json'),'r') as models:
+            with open(os.path.join(os.getcwd(),search_term,'Models','model_stats.json'),'r') as models:
                 self.models = json.loads(models.read())
         except FileNotFoundError:
             self.models = defaultdict(list)
+        self.stemmer = stemmer
+        self.vectorizer = vectorizer
+        self.transform = transform
+        self.search_term = search_term
 
     def benchmark_silent(self,clf,feature_names=None,target_names=None,live=False):
+        """Benchmarks  without outputting detailed results to console
+
+        Only reports when a model with a higher accuracy is found, reporting model name and accuracy score."""
+
 
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         t0 = time()
@@ -36,96 +46,154 @@ class BenchmarkSuite():
         score = metrics.accuracy_score(y_test, pred)
         name = clf.name[0]
 
+        # checking if current iteration is better than current best
         try:
-            print(f'Score : {score} | Best : {self.models[name][0]}')
+            score_stats = f'Model : {name} | Score : {self.models[name][0]}'
         except IndexError:
             self.models[name] = [score,clf.name[1]]
-            print('Valid Candidate Found')
-            dump(clf,f'./Models/{"_".join([clf.name[1],name])}')
+            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
         else:
+
             if score > self.models[name][0]:
-                self.models[name] = [score,clf.name[1]]
-                print('Valid Candidate Found')
-                dump(clf,f'./Models/{"_".join([clf.name[1],name])}')
+                self.models[name] = [score, clf.name[1]]
+
+                print(score_stats)
+                dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
         finally:
             clf_descr = str(clf).split('(')[0]
             return clf_descr, score, train_time, test_time
 
     def benchmark(self,clf,feature_names=None,target_names=None,live=False):
+        """Benchmarks and outputs detailed results to console
+
+        Only reports when a model with a higher accuracy is found, returns accuracy, f1 score, model parameters
+        and confusion matrix."""
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
-        print('_' * 80)
-        print("Training: ")
-        print(clf)
         t0 = time()
         clf.fit(X_train, y_train)
         train_time = time() - t0
-        print("train time: %0.3fs" % train_time)
-
-        t0 = time()
         pred = clf.predict(X_test)
+
         test_time = time() - t0
-        print("test time:  %0.3fs" % test_time)
-
         score = metrics.accuracy_score(y_test, pred)
-        print("accuracy:   %0.3f" % score)
-        name = str(clf)
-        name = name.split('(')[0]
-        print(f'Score : {score} | Best : {self.models[name]}')
-        if score > self.models[name]:
-            self.models[name] = score
-            print('Valid Candidate Found')
-            dump(clf,f'./Models/{name}')
+        name = clf.name[0]
 
-        if hasattr(clf, 'coef_'):
-            print("dimensionality: %d" % clf.coef_.shape[1])
-            print("density: %f" % density(clf.coef_))
+        try:
+            proba = clf.predict_proba(X_test)
+            name = clf.name[0]
+            #print(name,self.models[name][0])
+        except AttributeError:
+            pass
+        # checking if current iteration is better than current best
+        try:
+            score_stats = f'Model : {name} | Score : {self.models[name][0]}'
+        except IndexError:
+            self.models[name] = [score,clf.name[1]]
+            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
 
-            if True and feature_names is not None:
-                print("top 10 keywords per class:")
-                for i, label in enumerate(target_names):
-                    top10 = np.argsort(clf.coef_[i])[-10:]
-                    print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
-            print()
+            if hasattr(clf, 'coef_'):
+                print("dimensionality: %d" % clf.coef_.shape[1])
+                print("density: %f" % density(clf.coef_))
 
-        if True:
-            print("classification report:")
-            print(metrics.classification_report(y_test, pred,
-                                                target_names=target_names))
+                if True and feature_names is not None:
+                    print("top 10 keywords per class:")
+                    for i, label in enumerate(target_names):
+                        top10 = np.argsort(clf.coef_[i])[-10:]
+                        print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
+                print()
 
-        if True:
-            print("confusion matrix:")
-            print(metrics.confusion_matrix(y_test, pred))
+            if True:
+                print("classification report:")
+                print(metrics.classification_report(y_test, pred,
+                                                    target_names=target_names))
 
-        print()
-        clf_descr = str(clf).split('(')[0]
-        if live:
-            return clf
-        return clf_descr, score, train_time, test_time
+            if True:
+                print("confusion matrix:")
+                print(metrics.confusion_matrix(y_test, pred))
+
+        else:
+            if score > self.models[name][0]:
+                print(score_stats)
+                self.models[name] = [score,clf.name[1]]
+                print('Valid Candidate Found')
+                dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
+
+                if hasattr(clf, 'coef_'):
+                    print("dimensionality: %d" % clf.coef_.shape[1])
+                    print("density: %f" % density(clf.coef_))
+
+                    if True and feature_names is not None:
+                        print("top 10 keywords per class:")
+                        for i, label in enumerate(target_names):
+                            top10 = np.argsort(clf.coef_[i])[-10:]
+                            print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
+                    print()
+
+                if True:
+                    print("classification report:")
+                    print(metrics.classification_report(y_test, pred,
+                                                        target_names=target_names))
+
+                if True:
+                    print("confusion matrix:")
+                    print(metrics.confusion_matrix(y_test, pred))
+
+
+
+        finally:
+            clf_descr = str(clf).split('(')[0]
+            return clf_descr, score, train_time, test_time
 
     def show_results(self,plot=True,silent=False):
-        models_to_run = \
-            [
-                RidgeClassifier(tol=1e-2, solver="sag"),
-                Perceptron(max_iter=50),
-                PassiveAggressiveClassifier(max_iter=50),
-                KNeighborsClassifier(n_neighbors=10),
-                RandomForestClassifier(),
-                LinearSVC(penalty='l1', dual=False,
-                          tol=1e-3),
-                LinearSVC(penalty='l2', dual=False,
-                          tol=1e-3),
+        """Runs the data through a preselected series of models and returns results for each"""
 
-                SGDClassifier(alpha=.0001, max_iter=50,
-                              penalty='l1'),
-                SGDClassifier(alpha=.0001, max_iter=50,
-                              penalty='l2'),
-                SGDClassifier(alpha=.0001, max_iter=50,
-                              penalty="elasticnet"),
-                NearestCentroid(),
-                MultinomialNB(alpha=.01),
-                BernoulliNB(alpha=.01),
-                ComplementNB(alpha=.1),
-            ]
+
+        # preselected models
+        if self.vectorizer == 'glove':
+            models_to_run = \
+                [
+                    RidgeClassifier(tol=1e-2, solver="sag"),
+                    Perceptron(max_iter=50),
+                    PassiveAggressiveClassifier(max_iter=50),
+                    KNeighborsClassifier(n_neighbors=10),
+                    RandomForestClassifier(),
+                    LinearSVC(penalty='l1', dual=False,
+                              tol=1e-3),
+                    LinearSVC(penalty='l2', dual=False,
+                              tol=1e-3),
+
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty='l1'),
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty='l2'),
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty="elasticnet"),
+                    NearestCentroid(),
+                ]
+        else:
+            models_to_run = \
+                [
+                    RidgeClassifier(tol=1e-2, solver="sag"),
+                    Perceptron(max_iter=50),
+                    PassiveAggressiveClassifier(max_iter=50),
+                    KNeighborsClassifier(n_neighbors=10),
+                    RandomForestClassifier(),
+                    LinearSVC(penalty='l1', dual=False,
+                              tol=1e-3),
+                    LinearSVC(penalty='l2', dual=False,
+                              tol=1e-3),
+
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty='l1'),
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty='l2'),
+                    SGDClassifier(alpha=.0001, max_iter=50,
+                                  penalty="elasticnet"),
+                    NearestCentroid(),
+                    MultinomialNB(alpha=.01),
+                    BernoulliNB(alpha=.01),
+                    ComplementNB(alpha=.1),
+                ]
 
         benchmark = self.benchmark
         b_silent = self.benchmark_silent
@@ -133,10 +201,10 @@ class BenchmarkSuite():
 
         for clf in models_to_run:
             if silent:
-                pipe = ExtendedPipeline(clf,'count',transformer=True,stemmer='snowball',apply_stemming=False)
+                pipe = ExtendedPipeline(clf,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
                 results.append(b_silent(pipe))
             else:
-                pipe = ExtendedPipeline(clf, 'count', transformer=False, stemmer='snowball',apply_stemming=False)
+                pipe = ExtendedPipeline(clf, self.vectorizer, transformer=self.transform, stemmer=self.stemmer,apply_stemming=False)
                 results.append(benchmark(pipe))
 
 
@@ -148,9 +216,13 @@ class BenchmarkSuite():
         clf_names, score, training_time, test_time = results
         training_time = np.array(training_time) / np.max(training_time)
         test_time = np.array(test_time) / np.max(test_time)
-        with open(os.path.join(os.getcwd(),'Models','model_stats.json'),'w') as models:
+
+        # saving run results
+        with open(os.path.join(os.getcwd(),self.search_term,'Models','model_stats.json'),'w') as models:
             m = json.dumps(self.models)
             models.write(m)
+
+        # plots run statistics for each model if true, not recommended to be run in combination with iterative benching
         if plot==True:
             plt.figure(figsize=(12, 8))
             plt.title("Score")
@@ -170,21 +242,31 @@ class BenchmarkSuite():
             plt.show()
 
 def comparison_decorator(func):
+    """Decorator function for comparing the results of the current model settings with previous runs and settings"""
     def wrapper(*args):
+        # getting previous model stats
+        file_term,iterations = args
         try:
-            with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_log.json'), 'r') as models:
+            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'r') as models:
                 model_history = json.loads(models.read())
         except FileNotFoundError:
             model_history = defaultdict(list)
+
+        # this should be a function that runs a model + config and saves the results to ./*search_term */Models/...
         func(*args)
-        with open(os.path.join(os.getcwd(), 'Models', 'model_stats.json'), 'r') as models:
+
+        with open(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'), 'r') as models:
             last = json.loads(models.read())
-        os.unlink(os.path.join(os.getcwd(), 'Models', 'model_stats.json'))
+
+        # resetting live model stats to none
+        os.unlink(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'))
 
         clf = [k for k in last.keys()]
         formatted = defaultdict(list)
         maxl = max([len(mod) for mod in clf])
         print("','".join(clf))
+
+        # getting stats for each classifier
         for mod in clf:
             for i in range(0, 5):
                 print(model_history[mod])
@@ -195,8 +277,17 @@ def comparison_decorator(func):
         labels = ['Model', 'Last', 1, 2, 3, 4, 5]
         labels[0] = labels[0].center(maxl)
         for i, l in enumerate(labels[1:]):
-            labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
-                len(f'{formatted[clf[0]][0][0]:.2f} {formatted[clf[0]][0][1]}') + 1)
+            try:
+                if i == 0:
+                    labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
+                        len(f'{last[clf[0]][0]:.2f} {last[clf[0]][1]}') + 1)
+                else:
+                    labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
+                        len(f'{formatted[clf[0]][i-1][0]:.2f} {formatted[clf[0]][i-1][1]}') + 1)
+            except IndexError as e:
+                print(e)
+                labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
+                    len(f'{last[clf[0]][0]:.2f} {last[clf[0]][1]}') + 1)
         print("".join(labels))
         print('-' * len("".join(labels)))
         for mod in clf:
@@ -207,8 +298,9 @@ def comparison_decorator(func):
                 str += f'| {_[0]:.2f} {(_[1])}'
             print(str)
 
+        # saving combined model stats
         try:
-            with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_log.json'), 'w') as models:
+            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
                 for key in last.keys():
                     model_history[key].insert(0, last[key])
                     if len(model_history[key]) > 5:
@@ -219,6 +311,6 @@ def comparison_decorator(func):
             model_history = defaultdict(list)
             for key in last.keys():
                 model_history[key].insert(0, last[key])
-            with open(os.path.join(os.getcwd(), 'Models', 'Testing', f'model_stats_log.json'), 'w') as models:
+            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
                 models.write(json.dumps(last))
     return wrapper

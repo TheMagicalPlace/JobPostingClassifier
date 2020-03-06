@@ -24,8 +24,8 @@ class PipelineComponents:
         'Perceptron': Perceptron(max_iter=50),
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(max_iter=50),
         'KNeighborsClassifier': KNeighborsClassifier(n_neighbors=10),
-        'RandomForestClassifier': RandomForestClassifier(),
-        'LinearSVC': LinearSVC(penalty='l2', dual=False,tol=1e-3),
+        'RandomForestClassifier': RandomForestClassifier(n_estimators=1000, random_state=0),
+        'LinearSVC': LinearSVC(penalty='l2', dual=True,tol=1e-3),
         'SGDClassifier': SGDClassifier(alpha=.0001, max_iter=50,penalty='l2'),
         'SGDClassifier_elasticnet':SGDClassifier(alpha=.0001, max_iter=50,penalty="elasticnet"),
         'NearestCentroid': NearestCentroid(),
@@ -36,17 +36,19 @@ class PipelineComponents:
 
     vectorizers = {
         'hashing': HashingVectorizer(tokenizer=dummy,preprocessor=dummy),
-        'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy),
+        'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy,max_df=0.8),
+        'glove':GloveTokenize()
     }
 
     stemmers = {
         'porter' : StemTokenizer(),
         'snowball' : SnowballTokenizer(),
-        'lemma' :LemmaTokenizer()
+        'lemma' :LemmaTokenizer(),
+        None : dummy
 
     }
     transformers = {
-        'tfidf' : TfidfTransformer()
+        'tfidf' : TfidfTransformer(use_idf=True,sublinear_tf=True)
     }
 
 class ExtendedPipeline(Pipeline):
@@ -60,23 +62,32 @@ class ExtendedPipeline(Pipeline):
                  apply_stemming = True,
                  memory=None,
                  verbose=False):
-        if stemmer is not None:
-            # for cases where text is preprocessed but a stemmer should still be included in the object for later use
-            self.apply_stemming = apply_stemming
+        if stemmer == None:
+            self.stemmer = 'No Stemmer'
 
-            # can either use a predefined stemmer or a custom one
-            if isinstance(stemmer,str):
-                self.stemmer = PipelineComponents.stemmers[stemmer]
-            else:
-                self.stemmer = stemmer
-        else:
-            self.stemmer = None
-
-        if isinstance(vectorizer,str):
+        if vectorizer.lower() == 'glove':
+            self.apply_stemming = False
+            transformer = False
+            stemmer = 'No Stemmer'
             self.vectorizer = PipelineComponents.vectorizers[vectorizer]
+
+
         else:
-            self.vectorizer = vectorizer
-            vectorizer = str(vectorizer)
+            if stemmer is not None:
+                # for cases where text is preprocessed but a stemmer should still be included in the object for later use
+                self.apply_stemming = apply_stemming
+
+                # can either use a predefined stemmer or a custom one
+                if isinstance(stemmer,str):
+                    self.stemmer = PipelineComponents.stemmers[stemmer]
+                else:
+                    self.stemmer = stemmer
+
+            if isinstance(vectorizer,str):
+                self.vectorizer = PipelineComponents.vectorizers[vectorizer]
+            else:
+                self.vectorizer = vectorizer
+                vectorizer = str(vectorizer)
 
         if isinstance(classifier,str):
             self.classifier = PipelineComponents.models[classifier]
