@@ -121,7 +121,7 @@ class GloveTokenize:
 def avg_glove(df):
     vectors = []
     for t in tqdm(df.content.values):
-        vectors.append(np.average(GloveStruct.glove.query(word_tokenize(title)), axis = 0))
+        vectors.append(np.average(GloveStruct.glove.query(word_tokenize(t)), axis = 0))
     return np.array(vectors)
 
 def tfidf_glove(df,idf_dict):

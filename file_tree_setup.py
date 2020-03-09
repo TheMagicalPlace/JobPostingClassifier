@@ -48,4 +48,4 @@ def file_setup(search_term):
 
 
 if __name__ == '__main__':
-    file_setup('Chemical Engineer')
+    file_setup('Entry Level Computer Programmer')

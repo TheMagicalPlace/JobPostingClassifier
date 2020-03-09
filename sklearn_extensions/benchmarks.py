@@ -3,15 +3,21 @@
 
 from sklearn import metrics
 from sklearn.feature_selection import SelectFromModel
+from sklearn.linear_model import LogisticRegression
 from sklearn.utils.extmath import density
 import numpy as np
+from sklearn.model_selection import GridSearchCV,ParameterGrid,StratifiedKFold
 from time import time
 from matplotlib import pyplot as plt
 import json
 from _collections import defaultdict
 from  sklearn_extensions.extended_pipeline import *
 import warnings
-warnings.filterwarnings("ignore")
+from warnings import simplefilter
+import parfit.parfit as pf
+from sklearn.metrics import roc_auc_score
+
+
 def trim(s):
     """Trim string to fit on terminal (assuming 80-column display)"""
     return s if len(s) <= 80 else s[:77] + "..."
@@ -55,10 +61,17 @@ class BenchmarkSuite():
         else:
 
             if score > self.models[name][0]:
-                self.models[name] = [score, clf.name[1]]
-
-                print(score_stats)
-                dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
+                clf = self.hyperparameter_tuning(name)
+                pred = clf.predict(X_test)
+                tscore = metrics.accuracy_score(y_test, pred)
+                print(f'Original Score : {score}\nTuned Score : {tscore}')
+                if score < self.models[name][0]:
+                    clf_descr = str(clf).split('(')[0]
+                    return clf_descr, score, train_time, test_time
+                else:
+                    self.models[name] = [score, clf.name[1]]
+                    print(score_stats)
+                    dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
         finally:
             clf_descr = str(clf).split('(')[0]
             return clf_descr, score, train_time, test_time
@@ -113,11 +126,9 @@ class BenchmarkSuite():
 
         else:
             if score > self.models[name][0]:
-                print(score_stats)
-                self.models[name] = [score,clf.name[1]]
-                print('Valid Candidate Found')
-                dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
 
+                print(clf.name)
+                self.models[name] = [score,clf.name[1]]
                 if hasattr(clf, 'coef_'):
                     print("dimensionality: %d" % clf.coef_.shape[1])
                     print("density: %f" % density(clf.coef_))
@@ -147,66 +158,21 @@ class BenchmarkSuite():
     def show_results(self,plot=True,silent=False):
         """Runs the data through a preselected series of models and returns results for each"""
 
-
-        # preselected models
-        if self.vectorizer == 'glove':
-            models_to_run = \
-                [
-                    RidgeClassifier(tol=1e-2, solver="sag"),
-                    Perceptron(max_iter=50),
-                    PassiveAggressiveClassifier(max_iter=50),
-                    KNeighborsClassifier(n_neighbors=10),
-                    RandomForestClassifier(),
-                    LinearSVC(penalty='l1', dual=False,
-                              tol=1e-3),
-                    LinearSVC(penalty='l2', dual=False,
-                              tol=1e-3),
-
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty='l1'),
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty='l2'),
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty="elasticnet"),
-                    NearestCentroid(),
-                ]
-        else:
-            models_to_run = \
-                [
-                    RidgeClassifier(tol=1e-2, solver="sag"),
-                    Perceptron(max_iter=50),
-                    PassiveAggressiveClassifier(max_iter=50),
-                    KNeighborsClassifier(n_neighbors=10),
-                    RandomForestClassifier(),
-                    LinearSVC(penalty='l1', dual=False,
-                              tol=1e-3),
-                    LinearSVC(penalty='l2', dual=False,
-                              tol=1e-3),
-
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty='l1'),
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty='l2'),
-                    SGDClassifier(alpha=.0001, max_iter=50,
-                                  penalty="elasticnet"),
-                    NearestCentroid(),
-                    MultinomialNB(alpha=.01),
-                    BernoulliNB(alpha=.01),
-                    ComplementNB(alpha=.1),
-                ]
-
+        models_to_run  = {model:PipelineComponents.models[model] for model in ['LinearSVC','LogisticRegressionCV','LogisticRegression','Perceptron','RidgeClassifier','SGDClassifier']}
         benchmark = self.benchmark
         b_silent = self.benchmark_silent
         results = []
-
-        for clf in models_to_run:
-            if silent:
-                pipe = ExtendedPipeline(clf,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
-                results.append(b_silent(pipe))
-            else:
-                pipe = ExtendedPipeline(clf, self.vectorizer, transformer=self.transform, stemmer=self.stemmer,apply_stemming=False)
-                results.append(benchmark(pipe))
-
+        for nam , clf in models_to_run.items():
+            try:
+                if silent:
+                    pipe = ExtendedPipeline(clf,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
+                    results.append(b_silent(pipe))
+                else:
+                    pipe = ExtendedPipeline(clf, self.vectorizer, transformer=self.transform, stemmer=self.stemmer,apply_stemming=False)
+                    results.append(benchmark(pipe))
+            except ValueError as e:
+                print(e)
+                print('failed')
 
 
         indices = np.arange(len(results))
@@ -241,22 +207,52 @@ class BenchmarkSuite():
 
             plt.show()
 
+    def hyperparameter_tuning(self,model : str):
+
+        print(f'Tuning {model}')
+        t0 = time()
+        model = PipelineComponents.models[model]
+        pipe = ExtendedPipeline(model,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
+        params = ModelTuningParams.models[pipe.name[0]]
+        params_formatted = defaultdict(list)
+        name = pipe.name[0]
+        for k,v in params.items():
+            key_formattted = "__".join([name,k])
+            params_formatted[key_formattted] = v
+        pgrid = ParameterGrid(params_formatted)
+
+        tuned_pipe = SupressedGSCV(estimator = ExtendedPipeline(model,
+                                                               self.vectorizer,
+                                                               transformer=self.transform,
+                                                               stemmer=self.stemmer,
+                                                               apply_stemming=False),
+                                  param_grid=params_formatted,
+                                  n_jobs=-1,
+                                  verbose=0)
+        tpipe = tuned_pipe.fit(self.X_train,self.y_train)
+        print(tpipe.best_score_)
+        print(tpipe.best_params_)
+        print(f'Time Elapsed : {time()-t0}')
+        return tpipe.best_estimator_
 def comparison_decorator(func):
     """Decorator function for comparing the results of the current model settings with previous runs and settings"""
     def wrapper(*args):
         # getting previous model stats
         file_term,iterations = args
+        model_history = defaultdict(list)
         try:
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'r') as models:
-                model_history = json.loads(models.read())
+                model_history.update(json.loads(models.read()))
         except FileNotFoundError:
-            model_history = defaultdict(list)
+            pass
 
         # this should be a function that runs a model + config and saves the results to ./*search_term */Models/...
         func(*args)
-
-        with open(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'), 'r') as models:
-            last = json.loads(models.read())
+        try:
+            with open(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'), 'r') as models:
+                last = json.loads(models.read())
+        except:
+            pass
 
         # resetting live model stats to none
         os.unlink(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'))
@@ -268,13 +264,13 @@ def comparison_decorator(func):
 
         # getting stats for each classifier
         for mod in clf:
-            for i in range(0, 5):
+            for i in range(0, 9):
                 print(model_history[mod])
                 if i + 1 > len(model_history[mod]):
                     break
                 else:
                     formatted[mod].append(model_history[mod][i])
-        labels = ['Model', 'Last', 1, 2, 3, 4, 5]
+        labels = ['Model', 'Last', 1, 2, 3, 4, 5,6,7,8,9]
         labels[0] = labels[0].center(maxl)
         for i, l in enumerate(labels[1:]):
             try:
@@ -303,7 +299,7 @@ def comparison_decorator(func):
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
                 for key in last.keys():
                     model_history[key].insert(0, last[key])
-                    if len(model_history[key]) > 5:
+                    if len(model_history[key]) > 9:
                         model_history[key].pop(-1)
                 models.write(json.dumps(model_history))
 
@@ -314,3 +310,9 @@ def comparison_decorator(func):
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
                 models.write(json.dumps(last))
     return wrapper
+
+class SupressedGSCV(GridSearchCV):
+    warnings.filterwarnings("ignore")
+
+    def fit(self, X, y=None, groups=None, **fit_params):
+        return super().fit(X,y,groups,**fit_params)

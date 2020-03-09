@@ -46,43 +46,68 @@ class ClassificationHandler:
                 self.dataset['label'].append(ClassificationHandler.job_label_associations[joblabel])
         self.dataset = pd.DataFrame(self.dataset)
 
-    def live_job_processing(self,directory,model = './Models/snowball_count_with_transform_SGDClassifier'):
+    def live_job_processing(self,directory,model=None):
+        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','lemma_count_LinearSVC')
         """ Sorts job descriptions generated during actual use of the program"""
         model = load(model)
         model.apply_stemming = True
-        with open(directory,'r') as job:
-            content = [job.read()]
+        try:
+            with open(directory,'r') as job:
+                content = [job.read()]
+        except FileNotFoundError:
+            return
         label = model.predict(content)
         return label
 
     def _split_dataset(self):
         """ Splits the presorted job data for model training"""
-        train,test = train_test_split(self.dataset,test_size=0.5,stratify = self.dataset.label,shuffle=True)
+        train,test = train_test_split(self.dataset,test_size=0.6,stratify = self.dataset.label,shuffle=True)
         y_train,y_test = train.label.values,test.label.values
         X_train,X_test = train.content.values,test.content.values
 
         self.X_train,self.X_test = X_train,X_test
         self.y_train,self.y_test = y_train,y_test
 
-    def model_data(self):
+    def model_data(self,*argss):
         self._split_dataset()
         bench = BenchmarkSuite(self.search_term,self.X_train,self.X_test,self.y_train,self.y_test,stemmer=self.stemmer,vectorizer=self.vectorizer,transform=self.transform)
         bench.show_results(silent=False,plot=False)
-
-
+        return 'None'
+    def tune_model(self,model : str):
+        self._split_dataset()
+        bench = BenchmarkSuite(self.search_term, self.X_train, self.X_test, self.y_train, self.y_test,
+                               stemmer=self.stemmer, vectorizer=self.vectorizer, transform=self.transform)
+        bench.hyperparameter_tuning(model)
+        return 'done'
 
 if __name__ == '__main__':
+    import multiprocessing as mp
+    from tqdm import tqdm
+    def tune(file_term,model):
+        search = ClassificationHandler(file_term, vectorizer='count', stemmer='snowball', transform=True)
+        search.tune_model(model)
 
 
     @comparison_decorator
-    def searchf(file_term,runs):
+    def searchf(file_term,iterations=None):
+        search = ClassificationHandler(file_term, vectorizer='count', stemmer='snowball',transform='normal')
+        for _ in tqdm(range(iterations)):
 
-        search = ClassificationHandler(file_term,vectorizer='count',stemmer='snowball',transform=True)
-        for _ in range(runs):
             search.model_data()
-            print(f'Round {_}')
 
-    searchf('Chemical Engineer',500)
+
+
+
+    def multi(file_term,iterations):
+        search = ClassificationHandler(file_term, vectorizer='count', stemmer='porter', transform='normal')
+        dat = []
+        for _ in range(100):
+            dat.append(mp.Process(target=searchf,args=(file_term,iterations)))
+        for p in dat:
+            p.start()
+
+
+    searchf('Entry Level Computer Programmer',250)
 
 
 
