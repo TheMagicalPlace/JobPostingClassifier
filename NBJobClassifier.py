@@ -47,7 +47,7 @@ class ClassificationHandler:
         self.dataset = pd.DataFrame(self.dataset)
 
     def live_job_processing(self,directory,model=None):
-        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','lemma_count_LinearSVC')
+        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','snowball_count_normal_SGDClassifier')
         """ Sorts job descriptions generated during actual use of the program"""
         model = load(model)
         model.apply_stemming = True
@@ -61,7 +61,7 @@ class ClassificationHandler:
 
     def _split_dataset(self):
         """ Splits the presorted job data for model training"""
-        train,test = train_test_split(self.dataset,test_size=0.6,stratify = self.dataset.label,shuffle=True)
+        train,test = train_test_split(self.dataset,test_size=0.3,stratify = self.dataset.label,shuffle=True)
         y_train,y_test = train.label.values,test.label.values
         X_train,X_test = train.content.values,test.content.values
 
@@ -89,25 +89,16 @@ if __name__ == '__main__':
 
 
     @comparison_decorator
-    def searchf(file_term,iterations=None):
-        search = ClassificationHandler(file_term, vectorizer='count', stemmer='snowball',transform='normal')
+    def searchf(file_term,iterations,stemmer,vectorizer,transformer):
+        search = ClassificationHandler(file_term, vectorizer= vectorizer,stemmer=stemmer,transform=transform)
         for _ in tqdm(range(iterations)):
-
             search.model_data()
 
 
-
-
-    def multi(file_term,iterations):
-        search = ClassificationHandler(file_term, vectorizer='count', stemmer='porter', transform='normal')
-        dat = []
-        for _ in range(100):
-            dat.append(mp.Process(target=searchf,args=(file_term,iterations)))
-        for p in dat:
-            p.start()
-
-
-    searchf('Entry Level Computer Programmer',250)
+    for vectorizer in ['count','hashing']:
+        for transform in [None,'normal','minmax','tfidf','normal']:
+            for stemmer in [None,'porter','snowball','lemma']:
+                searchf('Chemical Engineer',150,stemmer,vectorizer,transform)
 
 
 

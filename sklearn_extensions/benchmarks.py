@@ -238,7 +238,7 @@ def comparison_decorator(func):
     """Decorator function for comparing the results of the current model settings with previous runs and settings"""
     def wrapper(*args):
         # getting previous model stats
-        file_term,iterations = args
+        file_term,iterations,_,_,_ = args
         model_history = defaultdict(list)
         try:
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'r') as models:

@@ -158,8 +158,6 @@ class IndeedClient:
         """Navigates from page to page of the job search results"""
         i = 0
         while self.last_length < self.next_length:
-            print('page ' + str(i))
-            print('\n')
             # wait for the page to load
             try:
                 WebDriverWait(self.driver,60).until(
@@ -167,7 +165,8 @@ class IndeedClient:
                         (By.PARTIAL_LINK_TEXT,'Next'))
                 )
             except TimeoutException:
-                continue
+                print('Exited on Page ' + str(i))
+                break
 
             # closes out any on-page popups
             self.driver.find_element_by_partial_link_text('Next').send_keys(Keys.ESCAPE)

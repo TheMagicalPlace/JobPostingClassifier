@@ -65,9 +65,9 @@ class SearchHandler:
 
 if __name__ == '__main__':
     a = True
-    results = 50
-    term = 'Entry Level Software Engineer'
-    search = SearchHandler(term, results,equivlant_to='Entry Level Computer Programmer')
+    results = 250
+    term = 'Chemical Engineer'
+    search = SearchHandler(term, results,equivlant_to='Chemical Engineer')
     if a:
         search()
     else:
