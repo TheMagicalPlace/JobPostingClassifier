@@ -12,7 +12,7 @@ class SearchHandler:
     job_label_associations = {'Good Jobs': 'Good', 'Bad Jobs': 'Bad', 'Neutral Jobs': 'Neutral', 'Ideal Jobs': 'Ideal'}
     label_to_job_cat = {v:k for k,v in job_label_associations.items()}
 
-    def __init__(self,search_term,results_to_find,equivlant_to = None):
+    def __init__(self,search_term,results_to_find,equivlant_to = None,location='United States'):
         """Sets up file structure if needed and assigns instance variables, creates scraper object"""
         if equivlant_to is not None:
             self.search_term = search_term
@@ -22,7 +22,7 @@ class SearchHandler:
             self.file_term = search_term
 
         file_setup(self.file_term)
-        self.scraper = IndeedClient(search_term,self.file_term)
+        self.scraper = IndeedClient(search_term,self.file_term,location=location)
 
         self.no_of_results = results_to_find
         self.results = defaultdict(list)
@@ -65,9 +65,9 @@ class SearchHandler:
 
 if __name__ == '__main__':
     a = True
-    results = 250
+    results = 75
     term = 'Chemical Engineer'
-    search = SearchHandler(term, results,equivlant_to='Chemical Engineer')
+    search = SearchHandler(term, results,equivlant_to='Chemical Engineer',location='Michigan')
     if a:
         search()
     else:
