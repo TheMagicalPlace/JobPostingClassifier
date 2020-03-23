@@ -12,12 +12,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import *
-from Scrapers.Indeed import ScraperIndeed
+from scrapers.Indeed import ScraperIndeed
 import os
 
 
 #TODO normalize file terms for scraper and program
-class IndeedClient():
+class IndeedClient:
 
     def __init__(self,search_term,file_term,location='United States'):
         """Sets up the requisite instance variables for the scraoper
@@ -54,9 +54,17 @@ class IndeedClient():
         # how many more jobs to find is based on last + jobs to find
         self.last_length = len(self.jobinfo.keys())
 
+    def __call__(self, jobtitle,jobs_to_find):
+        self.next_length = self.last_length+jobs_to_find
+        self.driver_startup()
+        self.navigate_to_jobs(jobtitle,self.location)
+        self.navigate_through_pages()
+
+
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
         self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
+        self.scraper =ScraperIndeed.ScraperIndeed(self.driver)
         self.driver.get('https://www.indeed.com/')
 
     def navigate_to_jobs(self,job_desc,location='United States'):
@@ -72,7 +80,7 @@ class IndeedClient():
         elem.send_keys(Keys.RETURN)
         time.sleep(3)
 
-    def get_jobs_on_page(self,desc):
+    def get_jobs_on_page(self):
         """Gets job info for each unseen job on the current page"""
 
         elem = self.driver.find_elements_by_class_name('title')
@@ -93,29 +101,48 @@ class IndeedClient():
             xpath = f"//div[@id = {base}]/table/tbody/tr/td/span"
             #print(xpath,ele.text)
 
+
+            # handling popups on page
             try:
                 ele.click()
             except ElementClickInterceptedException:
                 ele.send_keys(Keys.ESCAPE)
                 ele.click()
 
-            # HTML element id's
-            link_id = "jobtitle"
-            job_id = "vjs-jobtitle"
-            company_id = "vjs-cn"
-            location_id = "vjs-loc"
-            desc_id = "vjs-desc"
-
             # waiting for each panel to load
             try:
-                WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable((By.ID, desc_id)))
+                WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable((By.ID, "vjs-desc")))
             except TimeoutException:
                 continue
 
-
-
-
-            ScraperIndeed.ScraperIndeed(self.driver)
+            # scraping job data
+            self.scraper.scrape_page(ele)
 
             self.last_length +=1
-        self.save_jobs()
+
+    def navigate_through_pages(self):
+        """Navigates from page to page of the job search results"""
+        i = 0
+        while self.last_length < self.next_length:
+
+            # wait for the page to load
+            try:
+                WebDriverWait(self.driver,60).until(
+                    EC.element_to_be_clickable(
+                        (By.PARTIAL_LINK_TEXT,'Next'))
+                )
+            except TimeoutException:
+                print('Exited on Page ' + str(i))
+                break
+
+            # closes out any on-page popups
+            self.driver.find_element_by_partial_link_text('Next').send_keys(Keys.ESCAPE)
+
+            #get job data on page
+            self.get_jobs_on_page()
+
+            self.driver.find_element_by_partial_link_text('Next').click()
+            time.sleep(3)
+            i +=1
+        # saving any remaining jobs
+        self.scraper.save_data_json()

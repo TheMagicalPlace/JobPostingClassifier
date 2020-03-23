@@ -1,4 +1,4 @@
-from ScraperIndeed import *
+from scrapers import *
 from job_data_write import *
 from file_tree_setup import *
 from NBJobClassifier import *
@@ -31,7 +31,7 @@ class SearchHandler:
         """Scrapes and classifies job data based on setup data"""
 
         self.classifier = ClassificationHandler(self.file_term,training=False)
-        self.scraper(jobs_to_find=self.no_of_results)
+        self.scraper(self.search_term,self.no_of_results)
         self.json_reader = JSONProcessor(self.file_term)
         self.json_reader()
         self.classify()
