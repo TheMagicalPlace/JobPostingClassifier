@@ -12,11 +12,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import *
 
 import os
-from Scrapers import scraper_template
+from scrapers import _scraper_template
 
 
 
-class ScraperIndeed(scraper_template.ScraperBase):
+class ScraperIndeed(_scraper_template.ScraperBase):
     link_id = "jobtitle"
     job_id = "vjs-jobtitle"
     company_id = "vjs-cn"
@@ -64,34 +64,6 @@ class ScraperIndeed(scraper_template.ScraperBase):
     def get_post_date(self,*args):
         return ""
 
-    def navigate_through_pages(self,job_desc):
-        """Navigates from page to page of the job search results"""
-        i = 0
-        while self.last_length < self.next_length:
-            # wait for the page to load
-            try:
-                WebDriverWait(self.driver,60).until(
-                    EC.element_to_be_clickable(
-                        (By.PARTIAL_LINK_TEXT,'Next'))
-                )
-            except TimeoutException:
-                print('Exited on Page ' + str(i))
-                break
-
-            # closes out any on-page popups
-            self.driver.find_element_by_partial_link_text('Next').send_keys(Keys.ESCAPE)
-
-            #get job data
-            self.get_jobs_on_page(job_desc)
-
-            self.driver.find_element_by_partial_link_text('Next').click()
-            time.sleep(3)
-            i +=1
 
 
-    def save_jobs(self):
-        """saves the jobs to the corresponding json file"""
-        with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'w') as job:
-            d = json.dumps(self.jobinfo)
-            job.write(d)
 
