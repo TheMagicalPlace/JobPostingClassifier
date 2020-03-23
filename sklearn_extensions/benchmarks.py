@@ -6,6 +6,8 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.extmath import density
 import numpy as np
+
+import pandas as pd
 from sklearn.model_selection import GridSearchCV,ParameterGrid,StratifiedKFold
 from time import time
 from matplotlib import pyplot as plt
@@ -237,12 +239,19 @@ class BenchmarkSuite():
 def comparison_decorator(func):
     """Decorator function for comparing the results of the current model settings with previous runs and settings"""
     def wrapper(*args):
+
+        old_data = defaultdict(list)
         # getting previous model stats
+        runstat = []
         file_term,iterations,_,_,_ = args
         model_history = defaultdict(list)
         try:
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'r') as models:
                 model_history.update(json.loads(models.read()))
+                for k, v in model_history.items():
+                    runstat = [_ for _ in list(zip(*v))[1]]
+                    for it in v:
+                        old_data[k].append(it[0])
         except FileNotFoundError:
             pass
 
@@ -251,56 +260,38 @@ def comparison_decorator(func):
         try:
             with open(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'), 'r') as models:
                 last = json.loads(models.read())
-        except:
+                for k, v in last.items():
+                    old_data[k].insert(0,v[0])
+                runstat.insert(0,last[k][1])
+        except FileNotFoundError as e:
+            print(e)
             pass
+
+        current_data = {}
+        for k in last.keys():
+            current_data[k] = old_data[k]
 
         # resetting live model stats to none
         os.unlink(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'))
 
         clf = [k for k in last.keys()]
-        formatted = defaultdict(list)
-        maxl = max([len(mod) for mod in clf])
-        print("','".join(clf))
 
-        # getting stats for each classifier
-        for mod in clf:
-            for i in range(0, 9):
-                print(model_history[mod])
-                if i + 1 > len(model_history[mod]):
-                    break
-                else:
-                    formatted[mod].append(model_history[mod][i])
-        labels = ['Model', 'Last', 1, 2, 3, 4, 5,6,7,8,9]
-        labels[0] = labels[0].center(maxl)
-        for i, l in enumerate(labels[1:]):
-            try:
-                if i == 0:
-                    labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
-                        len(f'{last[clf[0]][0]:.2f} {last[clf[0]][1]}') + 1)
-                else:
-                    labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
-                        len(f'{formatted[clf[0]][i-1][0]:.2f} {formatted[clf[0]][i-1][1]}') + 1)
-            except IndexError as e:
-                print(e)
-                labels[i + 1] = '|' + f'{labels[i + 1]}'.center(
-                    len(f'{last[clf[0]][0]:.2f} {last[clf[0]][1]}') + 1)
-        print("".join(labels))
-        print('-' * len("".join(labels)))
-        for mod in clf:
-            str = f'{mod}'
-            str = str.ljust(maxl)
-            str += f'| {last[mod][0]:.2f} {last[mod][1]}'
-            for _ in formatted[mod]:
-                str += f'| {_[0]:.2f} {(_[1])}'
-            print(str)
+        labels = pd.DataFrame(data=runstat,columns=['Specifications'])
+        data = pd.DataFrame(current_data)
+        data = labels.join(data)
+
+        print(data.to_string())
 
         # saving combined model stats
+        all_keys = list(model_history.keys())+list(last.keys())
+        all_keys = set(all_keys)
         try:
             with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
-                for key in last.keys():
-                    model_history[key].insert(0, last[key])
-                    if len(model_history[key]) > 9:
-                        model_history[key].pop(-1)
+                for key in all_keys:
+                    try:
+                        model_history[key].insert(0, last[key])
+                    except KeyError:
+                        model_history[key].insert(0,[None,None])
                 models.write(json.dumps(model_history))
 
         except FileNotFoundError:

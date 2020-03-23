@@ -47,7 +47,7 @@ class ClassificationHandler:
         self.dataset = pd.DataFrame(self.dataset)
 
     def live_job_processing(self,directory,model=None):
-        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','snowball_count_normal_SGDClassifier')
+        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','snowball_count_tfidf_LogisticRegressionCV')
         """ Sorts job descriptions generated during actual use of the program"""
         model = load(model)
         model.apply_stemming = True
@@ -96,9 +96,9 @@ if __name__ == '__main__':
 
 
     for vectorizer in ['count','hashing']:
-        for transform in [None,'normal','minmax','tfidf','normal']:
+        for transform in [None,'normal','minmax','tfidf']:
             for stemmer in [None,'porter','snowball','lemma']:
-                searchf('Chemical Engineer',150,stemmer,vectorizer,transform)
+                searchf('Chemical Engineer',200,stemmer,vectorizer,transform)
 
 
 

@@ -20,6 +20,7 @@ def create_tokens(text: str):
     iterables of any kind
     """
     _ = r'one|two|three|four|five|six|seven|eight|nine|zero'
+    num2int = {'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'zero':0}
     to_append = []
     stop_word_regex = re.compile(
         r"((\b| )(for|is|a|the|an|as|to|and|with|in|inc|eg|etc|n/a|that|be|[A-Za-z0-9]{1})([^A-Za-z0-9]|\b))+")
@@ -32,12 +33,20 @@ def create_tokens(text: str):
     # made into custom tokens to better reflect their significance as pertains to job postings
     if experience:
         for exp in experience:
-            base = int(exp[1])
+            try:
+                base = int(num2int[exp[1]])
+            except KeyError:
+                base = int(exp[1])
             if exp[2] == '+':
                 for i in range(base, base + 3):
                     to_append.append(f'{i} years')
             elif exp[3] == '-':
-                for i in range(int(exp[1]), int(exp[4]) + 1):
+
+                try:
+                    nu =int(num2int[exp[4]])
+                except KeyError:
+                    nu = int(exp[4])
+                for i in range(base, nu + 1):
                     to_append.append(f'{i} years')
 
     # same with GPA requirements
