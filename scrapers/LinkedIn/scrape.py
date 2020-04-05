@@ -7,7 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import datetime
 import json
 import time
-from scraper_template import *
+from scrapers._scraper_template import ScraperBase
 import re
 
 

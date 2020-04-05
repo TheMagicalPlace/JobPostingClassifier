@@ -7,6 +7,8 @@ def file_setup(search_term):
     except FileExistsError:
         pass
 
+
+
     # Job Description folders
     for folder in ['Train', 'Results']:
         try:
