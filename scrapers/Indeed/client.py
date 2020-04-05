@@ -12,7 +12,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import *
-from scrapers.Indeed import ScraperIndeed
+from scrapers import *
 import os
 
 
@@ -63,8 +63,10 @@ class IndeedClient:
 
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
+
+        # TODO generalize webdriver path
         self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
-        self.scraper =ScraperIndeed.ScraperIndeed(self.driver)
+        self.scraper =_ScraperIndeed(self.driver)
         self.driver.get('https://www.indeed.com/')
 
     def navigate_to_jobs(self,job_desc,location='United States'):

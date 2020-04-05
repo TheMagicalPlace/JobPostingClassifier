@@ -6,8 +6,9 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from scrape import *
+from scrapers import *
 import datetime
+import os
 import json
 import time
 from collections import Counter
@@ -16,8 +17,10 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 
 class LIClient(object):
-    def __init__(self, driver, **kwargs):
-        self.driver         =  driver
+    def __init__(self, search_term,file_term,location,**kwargs):
+        # TODO generalize webdriver path
+        self.driver         =  webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
+
         self.username       =  kwargs["username"]
         self.keyword = kwargs["keywords"][0]
         self.location = kwargs["locations"][0]
@@ -29,7 +32,40 @@ class LIClient(object):
         self.salary_range   =  kwargs["salary_range"]
         self.results_page   =  kwargs["results_page"]
 
+        self.location = location
 
+        def driver_startup(self):
+            """launches the webdriver & navigated to indeed homepage"""
+            self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
+            self.scraper = _ScraperLinkedin(self.driver)
+            self.driver.get('https://www.indeed.com/')
+
+
+        # if the folder name is the same as the search term
+
+
+        if file_term != search_term:
+            self.search_term = search_term
+            self.file_term = file_term
+            try:
+                with open(os.path.join(os.getcwd(),file_term,'jobs_data'),'r') as jobs:
+                    self.jobinfo = json.loads(jobs.read())
+            except FileNotFoundError:
+                self.jobinfo = {}
+        # for related search terms
+        else:
+            self.search_term = search_term
+            self.file_term = self.search_term
+            try:
+                with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'r') as jobs:
+                    self.jobinfo = json.loads(jobs.read())
+            except FileNotFoundError:
+                self.jobinfo = {}
+        # how many more jobs to find is based on last + jobs to find
+        self.last_length = len(self.jobinfo.keys())
+
+    def __call__(self, results_to_fetch):
+        pass
     def driver_quit(self):
         self.driver.quit()
 
@@ -137,7 +173,7 @@ class LIClient(object):
         scrape postings for all pages in search results
         """
         driver = self.driver
-        scraper =ScraperLinkdin(self.driver)
+        scraper =_ScraperLinkedin(self.driver)
         search_results_exhausted = False
         results_page = self.results_page
         delay = 60
@@ -172,8 +208,6 @@ class LIClient(object):
                    # driver.execute_script('arguments[0].scrollIntoView(true);', l)
                     actions.move_to_element_with_offset(l,0,0).perform()
                     time.sleep(0.05)
-
-
 
 
             print(lnks)
