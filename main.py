@@ -31,7 +31,8 @@ class SearchHandler:
         """Scrapes and classifies job data based on setup data"""
 
         self.classifier = ClassificationHandler(self.file_term,training=False)
-        self.scraper(jobs_to_find=self.no_of_results)
+        if self.no_of_results:
+            self.scraper(jobs_to_find=self.no_of_results)
         self.json_reader = JSONProcessor(self.file_term)
         self.json_reader()
         self.classify()
@@ -65,9 +66,9 @@ class SearchHandler:
 
 if __name__ == '__main__':
     a = True
-    results = 250
-    term = 'Chemical Engineer'
-    search = SearchHandler(term, results,equivlant_to='Chemical Engineer')
+    results = 0
+    term = 'Junior Python Developer'
+    search = SearchHandler(term, results,equivlant_to='Entry Level Computer Programmer')
     if a:
         search()
     else:

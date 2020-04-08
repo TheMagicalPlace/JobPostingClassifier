@@ -19,7 +19,10 @@ def create_tokens(text: str):
     Note: this is meant to parse a single document string only, and should not be made to work directly with
     iterables of any kind
     """
-    _ = r'one|two|three|four|five|six|seven|eight|nine|zero'
+    _ = r'zero|one|two|three|four|five|six|seven|eight|nine'
+    str_conversion = defaultdict(str)
+    str_conversion.update({k:v for v,k in enumerate(_.split('|'))})
+
     to_append = []
     stop_word_regex = re.compile(
         r"((\b| )(for|is|a|the|an|as|to|and|with|in|inc|eg|etc|n/a|that|be|[A-Za-z0-9]{1})([^A-Za-z0-9]|\b))+")
@@ -32,6 +35,11 @@ def create_tokens(text: str):
     # made into custom tokens to better reflect their significance as pertains to job postings
     if experience:
         for exp in experience:
+            exp = [e for e in exp]
+            if str_conversion[exp[1]]:
+                    exp[1] = str_conversion[exp[1]]
+            if str_conversion[exp[4]]:
+                exp[4] = str_conversion[exp[4]]
             base = int(exp[1])
             if exp[2] == '+':
                 for i in range(base, base + 3):
