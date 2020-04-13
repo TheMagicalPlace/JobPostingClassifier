@@ -98,7 +98,7 @@ if __name__ == '__main__':
     for vectorizer in ['count']:
         for transform in [None,'normal','minmax','tfidf']:
             for stemmer in [None,'porter','snowball','lemma']:
-                searchf('Entry Level Computer Programmer',200,stemmer,vectorizer,transform)
+                searchf('Entry Level Computer Programmer',250,stemmer,vectorizer,transform)
 
 
 
