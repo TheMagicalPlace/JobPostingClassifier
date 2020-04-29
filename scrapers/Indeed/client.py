@@ -1,7 +1,7 @@
 import json
 import os
 import time
-
+import sqlite3
 from selenium import webdriver
 from selenium.common.exceptions import *
 from selenium.webdriver.common.by import By
@@ -9,11 +9,15 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 import scrapers
+import file_tree_setup
+
 
 #TODO normalize file terms for scraper and program
 class IndeedClient:
 
-    def __init__(self,search_term,file_term,location='United States'):
+    def __init__(self,search_term,file_term,location,jobs_to_find):
+        file_tree_setup.file_setup(file_term)
+
         """Sets up the requisite instance variables for the scraoper
 
         search_term - the term to be searched on Indeed
@@ -24,43 +28,27 @@ class IndeedClient:
         together when classifying and/or writing search results."""
 
         self.location = location
+        self.jobs_to_find = jobs_to_find
+        self.search_term = search_term
+        self.file_term = file_term
+        self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
+        self.scrape_continue = True
 
-        # if the folder name is the same as the search term
-
-
-        if file_term != search_term:
-            self.search_term = search_term
-            self.file_term = file_term
-            try:
-                with open(os.path.join(os.getcwd(),file_term,'jobs_data'),'r') as jobs:
-                    self.jobinfo = json.loads(jobs.read())
-            except FileNotFoundError:
-                self.jobinfo = {}
-        # for related search terms
-        else:
-            self.search_term = search_term
-            self.file_term = self.search_term
-            try:
-                with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'r') as jobs:
-                    self.jobinfo = json.loads(jobs.read())
-            except FileNotFoundError:
-                self.jobinfo = {}
-        # how many more jobs to find is based on last + jobs to find
-        self.last_length = len(self.jobinfo.keys())
-
-    def __call__(self, jobtitle,jobs_to_find):
-        self.next_length = self.last_length+jobs_to_find
+    def __call__(self):
         self.driver_startup()
-        self.navigate_to_jobs(jobtitle,self.location)
+        self.navigate_to_jobs(self.search_term,self.location)
         self.navigate_through_pages()
-
 
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
 
         # TODO generalize webdriver path
         self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
-        self.scraper =scrapers._ScraperIndeed(self.driver,file_path_args=self.file_term)
+        self.scraper =scrapers._ScraperIndeed(self.driver,
+                                              database=self.database,
+                                              search_term=self.search_term,
+                                              no_of_calls=self.jobs_to_find,
+                                              file_path_args=self.file_term)
         self.driver.get('https://www.indeed.com/')
 
     def navigate_to_jobs(self,job_desc,location='United States'):
@@ -81,11 +69,10 @@ class IndeedClient:
 
         elem = self.driver.find_elements_by_class_name('title')
         containers = self.driver.find_elements_by_class_name('jobsearch-SerpJobCard')
-        seen = []
         for ele,container in zip(elem,containers):
 
             # exits once target no. of jobs are found
-            if self.last_length >= self.next_length:
+            if not self.scrape_continue:
                 print('exited')
                 break
 
@@ -111,34 +98,48 @@ class IndeedClient:
             except TimeoutException:
                 continue
 
-            # scraping job data
-            self.scraper.scrape_page(ele)
-
-            self.last_length +=1
+            # scraping job data , exits if the scraper sends False
+            self.scrape_continue = self.scraper.scrape_page(ele)
+            if not self.scrape_continue:
+                return
 
     def navigate_through_pages(self):
         """Navigates from page to page of the job search results"""
         i = 0
-        while self.last_length < self.next_length:
-
+        self.selector = None
+        while self.scrape_continue:
+            i += 1
             # wait for the page to load
+
+
+
             try:
-                WebDriverWait(self.driver,60).until(
+                WebDriverWait(self.driver,15).until(
                     EC.element_to_be_clickable(
                         (By.PARTIAL_LINK_TEXT,'Next'))
                 )
+                # closes out any on-page popups
+                self.driver.find_element_by_partial_link_text('Next').send_keys(Keys.ESCAPE)
             except TimeoutException:
-                print('Exited on Page ' + str(i))
-                break
+                try:
+                    WebDriverWait(self.driver, 15).until(
+                        EC.element_to_be_clickable(
+                            (By.XPATH, "//a[@aria-label='Next']"))
+                    )
+                    # closes out any on-page popups
+                    self.driver.find_element_by_xpath("//a[@aria-label='Next']").send_keys(Keys.ESCAPE)
+                except TimeoutException:
+                    print('Exited on Page ' + str(i))
+                    break
+                else:
+                    self.get_jobs_on_page()
+                    self.driver.find_element_by_xpath("//a[@aria-label='Next']").click()
+            else:
+                self.get_jobs_on_page()
+                self.driver.find_element_by_partial_link_text('Next').click()
+            finally:
+                time.sleep(3)
 
-            # closes out any on-page popups
-            self.driver.find_element_by_partial_link_text('Next').send_keys(Keys.ESCAPE)
-
-            #get job data on page
-            self.get_jobs_on_page()
-
-            self.driver.find_element_by_partial_link_text('Next').click()
-            time.sleep(3)
-            i +=1
-        # saving any remaining jobs
-        self.scraper.save_data_json()
+if __name__ == '__main__':
+    client = IndeedClient("operator","operator","United States",10)
+    client()

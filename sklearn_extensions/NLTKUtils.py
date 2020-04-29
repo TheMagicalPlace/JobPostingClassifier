@@ -7,7 +7,7 @@ from collections import defaultdict
 from nltk.stem.snowball import SnowballStemmer
 import re
 import tqdm
-from pymagnitude import Magnitude
+
 import numpy as np
 import os
 
@@ -118,9 +118,9 @@ class GloveStruct:
     """contains glove for use with glove based document processing
 
     implemented as a class to avoid cluttering global namespace"""
-    glove = Magnitude(os.path.join(os.getcwd(), 'sklearn_extensions', 'vectors', 'glove.6B.100d.magnitude'))
+    #glove = Magnitude(os.path.join(os.getcwd(), 'sklearn_extensions', 'vectors', 'glove.6B.100d.magnitude'))
 
-
+"""
 class GloveTokenize:
     def __init__(self):
         self.glove = GloveStruct.glove
@@ -158,3 +158,4 @@ def tfidf_glove(df, idf_dict):
         weights = [idf_dict.get(word, 1) for word in word_tokenize(title)]
         vectors.append(np.average(glove_vectors, axis=0, weights=weights))
     return np.array(vectors)
+"""

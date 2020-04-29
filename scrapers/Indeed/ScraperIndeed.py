@@ -23,8 +23,8 @@ class ScraperIndeed(_scraper_template.ScraperBase):
     location_id = "vjs-loc"
     desc_id = "vjs-desc"
 
-    def __init__(self,driver,save_every=10,file_path_args=()):
-        super().__init__(driver,save_every=save_every,file_path_args=file_path_args)
+    def __init__(self,driver,database,search_term,no_of_calls,file_path_args=()):
+        super().__init__(driver,database,search_term,no_of_calls=no_of_calls,file_path_args=file_path_args)
         self.seen = []
 
 

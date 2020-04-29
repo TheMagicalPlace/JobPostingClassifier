@@ -6,7 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from scrapers import *
+from scrapers.LinkedIn.scrape import ScraperLinkdin as _ScraperLinkedin
 import datetime
 import os
 import json
@@ -17,59 +17,38 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 
 class LIClient(object):
-    def __init__(self, search_term,file_term,location,**kwargs):
+    def __init__(self, search_term,file_term,location,jobs_to_find):
         # TODO generalize webdriver path
         self.driver         =  webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
-
-        self.username       =  kwargs["username"]
-        self.keyword = kwargs["keywords"][0]
-        self.location = kwargs["locations"][0]
-        self.password       =  kwargs["password"]
-        self.filename       =  kwargs["filename"]
-        self.date_range     =  kwargs["date_range"]
-        self.search_radius  =  kwargs["search_radius"]
-        self.sort_by        =  kwargs["sort_by"]
-        self.salary_range   =  kwargs["salary_range"]
-        self.results_page   =  kwargs["results_page"]
-
+        self.location = location
+        self.jobs_to_find = jobs_to_find
+        self.search_term = search_term
+        self.file_term = file_term
+        self.database = os.path.join(os.getcwd(),file_term,f'{file_term}.db')
+        self.scrape_continue = True
         self.location = location
 
-        def driver_startup(self):
-            """launches the webdriver & navigated to indeed homepage"""
-            self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
-            self.scraper = _ScraperLinkedin(self.driver)
-            self.driver.get('https://www.indeed.com/')
+    def driver_startup(self):
+        """launches the webdriver & navigated to indeed homepage"""
+        # TODO configure driver info
+        self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
+        self.scraper = _ScraperLinkedin(self.driver,
+                                        self.database,
+                                        search_term=self.search_term,
+                                        no_of_calls=self.jobs_to_find)
+        self.driver.get('https://www.linkedin.com/')
 
 
-        # if the folder name is the same as the search term
+    def __call__(self, username,password):
+        self.driver_startup()
+        self.login(username,password)
+        self.navigate_to_jobs_page()
+        self.navigate_search_results()
 
-
-        if file_term != search_term:
-            self.search_term = search_term
-            self.file_term = file_term
-            try:
-                with open(os.path.join(os.getcwd(),file_term,'jobs_data'),'r') as jobs:
-                    self.jobinfo = json.loads(jobs.read())
-            except FileNotFoundError:
-                self.jobinfo = {}
-        # for related search terms
-        else:
-            self.search_term = search_term
-            self.file_term = self.search_term
-            try:
-                with open(os.path.join(os.getcwd(),self.file_term,'jobs_data'),'r') as jobs:
-                    self.jobinfo = json.loads(jobs.read())
-            except FileNotFoundError:
-                self.jobinfo = {}
-        # how many more jobs to find is based on last + jobs to find
-        self.last_length = len(self.jobinfo.keys())
-
-    def __call__(self, results_to_fetch):
-        pass
     def driver_quit(self):
         self.driver.quit()
 
-    def login(self):
+    def login(self,username,password):
         """login to linkedin then wait 3 seconds for page to load"""
         # Enter login credentials
         WebDriverWait(self.driver, 120).until(
@@ -78,9 +57,9 @@ class LIClient(object):
             )
         )
         elem = self.driver.find_element_by_id("username")
-        elem.send_keys(self.username)
+        elem.send_keys(username)
         elem = self.driver.find_element_by_id("password")
-        elem.send_keys(self.password)
+        elem.send_keys(password)
         # Enter credentials with Keys.RETURN
         elem.send_keys(Keys.RETURN)
         # Wait a few seconds for the page to load
@@ -124,12 +103,12 @@ class LIClient(object):
         # Enter search criteria
         ins =driver.find_elements_by_tag_name('input')
         ins = [inn.get_attribute('id') for inn in ins if inn.get_attribute('id').strip()]
-        locs = None
+
         for input in ins:
 
             input = driver.find_element_by_id(input)
             if input.get_attribute('aria-label') == 'Search jobs':
-                input.send_keys(self.keyword)
+                input.send_keys(self.search_term)
             elif input.get_attribute('aria-label') == 'Search location':
                 input.send_keys(self.location)
         input.send_keys(Keys.RETURN)
@@ -167,15 +146,14 @@ class LIClient(object):
                 )
             )
 
-
     def navigate_search_results(self):
         """
         scrape postings for all pages in search results
         """
         driver = self.driver
-        scraper =_ScraperLinkedin(self.driver)
+        scraper = self.scraper
         search_results_exhausted = False
-        results_page = self.results_page
+        results_page = 1
         delay = 60
         WebDriverWait(driver, 120).until(
             EC.presence_of_element_located(
@@ -216,8 +194,9 @@ class LIClient(object):
                 link_elems = driver.find_elements_by_link_text(name)
                 for i in range(count):
                     elem = link_elems[i]
-                    scraper.scrape_page(elem)
-
+                    self.scrape_continue = scraper.scrape_page(elem)
+                    if not self.scrape_continue:
+                        return
             # attempt to navigate to the next page of search results
             # if the link is not present, then the search results have been
             # exhausted
