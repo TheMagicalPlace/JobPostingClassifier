@@ -47,10 +47,10 @@ class ClassificationHandler:
         self.dataset = pd.DataFrame(self.dataset)
 
     def live_job_processing(self,directory,model=None):
-        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','snowball_count_tfidf_LogisticRegressionCV')
+        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','No Stemmer_count_minmax_Perceptron')
         """ Sorts job descriptions generated during actual use of the program"""
         model = load(model)
-        model.apply_stemming = True
+        model.apply_stemming = True if model.stemmer != "No Stemmer" else False
         try:
             with open(directory,'r') as job:
                 content = [job.read()]
@@ -95,10 +95,10 @@ if __name__ == '__main__':
             search.model_data()
 
 
-    for vectorizer in ['count','hashing']:
+    for vectorizer in ['count']:
         for transform in [None,'normal','minmax','tfidf']:
             for stemmer in [None,'porter','snowball','lemma']:
-                searchf('Chemical Engineer',200,stemmer,vectorizer,transform)
+                searchf('Entry Level Computer Programmer',250,stemmer,vectorizer,transform)
 
 
 

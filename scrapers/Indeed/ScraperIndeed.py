@@ -24,7 +24,7 @@ class ScraperIndeed(_scraper_template.ScraperBase):
     desc_id = "vjs-desc"
 
     def __init__(self,driver,save_every=10,file_path_args=()):
-        super().__init__(driver,save_every=save_every,file_path_args=())
+        super().__init__(driver,save_every=save_every,file_path_args=file_path_args)
         self.seen = []
 
 
