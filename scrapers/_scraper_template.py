@@ -8,8 +8,8 @@
 
 
 
-
-
+#TODO fix file extension stuff for windows compatibility
+#TODO check out why occasional hangs on 1st job page
 
 import time
 import re
@@ -60,12 +60,15 @@ class ScraperBase(abc.ABC):
             return "NA"
 
     def save_data_json(self):
-        if os.path.exists(os.path.join(os.getcwd(),*self.fpargs,"job_data.json")):
-            with open(os.path.join(os.getcwd(),*self.fpargs,"job_data.json"),'r+') as jobdat:
+        print(os.path.join(os.getcwd(),self.fpargs,"jobs_data.json"))
+        jpath = os.path.join(os.getcwd(),self.fpargs,"jobs_data.json")
+        if os.path.exists(jpath):
+            with open(os.path.join(os.getcwd(),self.fpargs,"jobs_data.json"),'r+') as jobdat:
+                print(self.fpargs)
                 self.job_dict.update(json.loads(jobdat.read()))
                 jobdat.write(json.dumps(self.job_dict))
         else:
-            with open(os.path.join(os.getcwd(),*self.fpargs,"job_data.json"),'w') as jobdat:
+            with open(os.path.join(os.getcwd(),self.fpargs,"job_data.json"),'w') as jobdat:
                 jobdat.write(json.dumps(self.job_dict))
 
     def scrape_page(self, element):
@@ -75,7 +78,7 @@ class ScraperBase(abc.ABC):
         """
 
         # wait ~1 second for elements to be dynamically rendered
-        time.sleep(1.2)
+        time.sleep(0.2)
         start = time.time()
         self.calls+=1
 

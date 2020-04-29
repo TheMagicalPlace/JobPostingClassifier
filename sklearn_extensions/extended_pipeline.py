@@ -144,13 +144,13 @@ class PipelineComponents:
         'BernoulliNB': BernoulliNB(alpha=.01),
         'ComplementNB': ComplementNB(alpha=.1),
         'SVC':SVC(),
-        'LogisticRegression': LogisticRegression(solver='liblinear',max_iter=1000,penalty='l1'),
-        'LogisticRegressionCV' : LogisticRegressionCV(penalty='l1',solver='liblinear',max_iter=1000,n_jobs=-1)
+        'LogisticRegression': LogisticRegression(solver='liblinear',max_iter=5000,penalty='l1'),
+        'LogisticRegressionCV' : LogisticRegressionCV(penalty='l1',solver='liblinear',max_iter=5000,n_jobs=-1)
     }
 
     vectorizers = {
         'hashing': HashingVectorizer(tokenizer=dummy,preprocessor=dummy),
-        'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=10000),
+        'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=1000),
         'glove':GloveTokenize()
     }
 

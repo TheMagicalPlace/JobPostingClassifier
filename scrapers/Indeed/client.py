@@ -1,20 +1,14 @@
+import json
 import os
-import json
 import time
-from collections import defaultdict
-import json
-import logging
 
-from xvfbwrapper import Xvfb
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import *
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import *
-from scrapers import *
-import os
-
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+import scrapers
 
 #TODO normalize file terms for scraper and program
 class IndeedClient:
@@ -66,7 +60,7 @@ class IndeedClient:
 
         # TODO generalize webdriver path
         self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
-        self.scraper =_ScraperIndeed(self.driver)
+        self.scraper =scrapers._ScraperIndeed(self.driver,file_path_args=self.file_term)
         self.driver.get('https://www.indeed.com/')
 
     def navigate_to_jobs(self,job_desc,location='United States'):
