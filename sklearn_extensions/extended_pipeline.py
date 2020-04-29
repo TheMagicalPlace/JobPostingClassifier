@@ -26,29 +26,55 @@ def _():
 def dummy(doc):
     return doc
 
+
+def svc_compatability_handler(model,dual : bool):
+    if dual:
+        if model == "LinearSVC":
+            params = {
+            'penalty': ['l2'],
+            'loss': ['hinge', 'squared_hinge'],
+            'C': [0.01,0.1, 1, 10],
+            'tol': [1e-2, 1e-3, 1e-4],
+            'fit_intercept': [True],
+            'max_iter': [-1],  # [100, 1000, 2500],
+            'dual': [True]}
+    else:
+        if model == "LinearSVC":
+            params = {
+            'penalty': ['l2'],
+            'loss': ['squared_hinge'],
+            'C': [0.01,0.1, 1, 10,],
+            'tol': [1e-2, 1e-3, 1e-4],
+            'fit_intercept': [True],
+            'max_iter': [-1],  # [100, 1000, 2500],
+            'dual': [False]}
+    return params
 class ModelTuningParams:
+
+
+
     models= {
         'Perceptron': {
-            'penalty': ['l2' ,'l1','elastinet'],
-            'max_iter' : [100,1000,5000],
-            'tol' : [1e-2,1e-3,1e-4,1e-5],
-            'shuffle' : True,
-            'eta0' : [0,0.1,1,10],
-            'n_jobs' : -1,
-            'n_iter' : [10,100,500],
+            'penalty': ['l2' ,'l1',],
+            'max_iter' : [5000],
+            'tol' : [1e-2,1e-3,1e-4],
+            'shuffle' : [True,False],
+            'eta0' : [0.1,1,10],
+            'n_jobs' : [-1],
+            'n_iter_no_change' : [5,25,100],
             'early_stopping' : [False,True]
         },
         'RidgeClassifier': {
             'alpha' : [0.1,1,10,100,1000],
             'fit_intercept' : [True,False],
             'max_iter': [-1],#[100, 1000, 5000],
-            'tol': [1e-2, 1e-3, 1e-4, 1e-5],
+            'tol': [1e-2, 1e-3, 1e-4],
             'solver' : ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag'],
         },
         'PassiveAggressiveClassifier':{
-            'C': [0.1, 1, 10, 100, 1000],
+            'C': [0.1, 1, 10, 100],
             'max_iter':[-1],# [100, 1000, 5000],
-            'tol': [1e-2, 1e-3, 1e-4, 1e-5],
+            'tol': [1e-2, 1e-3, 1e-4],
             'early_stopping': [False, True],
             'fit_intercept' : [False,True],
             'loss' : ['hinge','square_hinge'],
@@ -56,9 +82,9 @@ class ModelTuningParams:
             'shuffle' : [True]
         },
         'KNeighborsClassifier' : {
-            'n_neighbors' : [5,25,50,100],
+            'n_neighbors' : [5,25,50],
             'algorithm' : ['auto','ball_tree','kd_tree'],
-            'leaf_size' : [10,30,80,125,200],
+            'leaf_size' : [10,30,80,125],
             'n_jobs': [-1],
         },
         'RandomForestClassifier' : {
@@ -72,27 +98,43 @@ class ModelTuningParams:
             'bootstrap' : [True],
             'oob_score' : [False],
             'random_state': [42],
-            'max_features' : ['auto','log2',10,100,500,None],
+            'max_features' : ['auto','log2',10,500,None],
             'max_leaf_nodes' : [10,50,100,None],
             'n_jobs' : [-1]
         },
 
-
-
-        'LinearSVC': [{
-            'penalty' : ['l1','l2'],
-            'loss' : ['hinge','squared_hinge'],
-            'C': [0.1, 1, 10, 100, 1000],
-            'tol': [1e-2, 1e-3, 1e-4, 1e-5],
+        'LogisticRegressionCV': {
+            'penalty': ['l2',], #'elasticnet'],
+            'max_iter' : [5000],
+            'Cs': [0.01,0.1, 1, 10],
+            'tol': [1e-2, 1e-3, 1e-4],
             'fit_intercept': [False, True],
-            'max_iter': [-1],# [100, 1000, 2500],
-            'dual' : [True,False]}],
+            'solver': ['lbfgs',], # 'sag', 'saga','lbfgs',],
+            'dual': [False]},
+
+        'LogisticRegression': {
+            'penalty': ['l2',], # 'elasticnet'],
+            'max_iter': [5000],
+            'C': [0.01, 0.1, 1, 10, 100],
+            'tol': [0.1,1e-2, 1e-3, 1e-4],
+            'fit_intercept': [False, True],
+            'solver': ['lbfgs',], #, 'sag', 'saga','lbfgs',],
+            'dual': [False]},
+
+        'LinearSVC':              {
+            'penalty': ['l2'],
+            'loss': ['squared_hinge'],
+            'C': [0.01,0.1, 1, 10,],
+            'tol': [1e-2, 1e-3, 1e-4],
+            'fit_intercept': [True],
+            'max_iter': [-1],  # [100, 1000, 2500],
+            'dual': [False]},
         'SVC' : {
             'C': [0.1, 1, 10, 100, 1000],
             'kernel' : ['rbf','poly','sigmoid'],
-            'gamma' : ['scale','auto',0.1,1,10,100],
+            'gamma' : ['scale','auto',0.1,1,10],
             'coef0' : [0,0.1,1,10],
-            'tol': [1e-2, 1e-3, 1e-4, 1e-5],
+            'tol': [1e-2, 1e-3, 1e-4],
             'max_iter': [-1], #[100, 1000, 5000,-1],
 
 
@@ -100,28 +142,28 @@ class ModelTuningParams:
         'SGDClassifier' : {
             #'alpha': [0.0001,0.001,0.1, 1, 10, 100, 1000],
             'penalty': ['l1', 'l2',"elasticnet"],
-            'loss': ['hinge', 'squared_hinge','modified_huber','log','perceptron'],
+            'loss': ['hinge','modified_huber'],
             #'l1_ratio' : [0.05,0.15,0.3,0.5],
             'fit_intercept': [False, True],
-            'max_iter': [100, 1000, 2500],
+            'max_iter': [2500,5000],
             #'tol': [1e-2, 1e-3, 1e-4, 1e-5],
             'shuffle' : [True],
             'epsilon' : [0.1,0.5,1,10,100],
-            'learning_rate' : ['constant','optimal','invscaling','adaptive'],
-            'eta0': [0.01,0.1, 1, 10],
+            'learning_rate' : ['optimal','adaptive'],
+            'eta0': [0.001,0.1, 1],
             'early_stopping': [True],
             'power_t' : [0.5]
         },
         'MultinomialNB' : {
-            'alpha' : [0.1,1,10,100,1000],
+            'alpha' : [0.1,1,10,100],
             'fit_prior' : [True,False]
         },
         'BernoulliNB': {
-            'alpha': [0.1, 1, 10, 100, 1000],
+            'alpha': [0.1, 1, 10, 100],
             'fit_prior': [True, False]
         },
         'ComplimentNB': {
-            'alpha': [0.1, 1, 10, 100, 1000],
+            'alpha': [0.1, 1, 10, 100],
             'fit_prior': [True, False],
             'norm' : [True,False]
         }
@@ -144,28 +186,32 @@ class PipelineComponents:
         'BernoulliNB': BernoulliNB(alpha=.01),
         'ComplementNB': ComplementNB(alpha=.1),
         'SVC':SVC(),
-        'LogisticRegression': LogisticRegression(solver='liblinear',max_iter=5000,penalty='l1'),
-        'LogisticRegressionCV' : LogisticRegressionCV(penalty='l1',solver='liblinear',max_iter=5000,n_jobs=-1)
+        'LogisticRegression': LogisticRegression(solver='lbfgs',max_iter=5000,penalty='l2'),
+        'LogisticRegressionCV' : LogisticRegressionCV(penalty='l2',solver='lbfgs',max_iter=5000,n_jobs=-1)
     }
 
     vectorizers = {
         'hashing': HashingVectorizer(tokenizer=dummy,preprocessor=dummy),
         'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=1000),
-        'glove':GloveTokenize()
+        #'glove':GloveTokenize()
     }
 
     stemmers = {
         'porter' : StemTokenizer(),
         'snowball' : SnowballTokenizer(),
         'lemma' :LemmaTokenizer(),
+        # interchangable
+        "No Stemmer": dummy,
         None : dummy
-
     }
     transformers = {
         'tfidf' : TfidfTransformer(use_idf=True,sublinear_tf=True),
         'minmax' : MinMaxScaler(),
         'normal' : Normalizer(norm='l1'),
-        'robust' : RobustScaler()
+        'robust' : RobustScaler(),
+        'max' : MaxAbsScaler(),
+        None : 'passthrough',
+        'passthrough' : 'passthrough'
     }
 
 class ExtendedPipeline(Pipeline):
@@ -174,52 +220,46 @@ class ExtendedPipeline(Pipeline):
     def __init__(self,
                  classifier : str,
                  vectorizer : str,
-                 transformer : bool = False,
+                 transformer : bool = None,
                  stemmer : str = None,
                  apply_stemming = True,
                  memory=None,
                  verbose=False):
 
-        if stemmer == None:
-            self.stemmer = 'No Stemmer'
-            stemmer = 'No Stemmer'
-            self.apply_stemming = False
+        if isinstance(stemmer, str):
+            self.stemmer = PipelineComponents.stemmers[stemmer]
         else:
+            self.stemmer = stemmer
+        if isinstance(transformer,str):
 
-            # can either use a predefined stemmer or a custom one
-
-            if isinstance(stemmer, str):
-                self.stemmer = PipelineComponents.stemmers[stemmer]
-            else:
-                self.stemmer = stemmer
-            stemmer = str(stemmer)
-
-            # for cases where text is preprocessed but a stemmer should still be included in the object for later use
-            self.apply_stemming = apply_stemming
-
-
+            self.transformer = PipelineComponents.transformers[transformer]
+        else:
+            self.transformer = transformer
         if isinstance(vectorizer,str):
-            if vectorizer.lower() == 'glove':
-                self.apply_stemming = False
-                transformer = False
-                self.vectorizer = GloveTokenize()
-
-            else:
-                self.vectorizer = PipelineComponents.vectorizers[vectorizer]
-            vectorizer = str(vectorizer)
-
+            self.vectorizer = PipelineComponents.vectorizers[vectorizer]
         else:
             self.vectorizer = vectorizer
-            vectorizer = str(vectorizer)
 
+        stemmer = str(stemmer)
+        vectorizer = str(vectorizer)
+        transformer = str(transformer)
+
+        if stemmer == None:
+            stemmer = "No Stemmer"
+            # for cases where text is preprocessed but a stemmer should still be included in the object for later use
+            self.apply_stemming = False
+        else:
+            self.apply_stemming = apply_stemming
+
+        if transformer == None:
+            transformer = "No Transformer"
 
         if isinstance(classifier,str):
             self.classifier = PipelineComponents.models[classifier]
-            if transformer:
-                transform = PipelineComponents.transformers[transformer]
+            if transformer != 'No Transformer':
                 self.name = (classifier,"_".join([stemmer,vectorizer,transformer]))
                 steps = [(vectorizer,self.vectorizer),
-                         (transformer,transform),
+                         (transformer,self.transformer),
                          (classifier,self.classifier)]
             else:
                 self.name = (classifier,"_".join([stemmer, vectorizer]))
@@ -233,7 +273,7 @@ class ExtendedPipeline(Pipeline):
             if transformer:
                 self.name = (clf,"_".join([stemmer,vectorizer,transformer]))
                 steps = [(vectorizer,self.vectorizer),
-                         (transformer,TfidfTransformer()),
+                         (transformer,self.transformer),
                          (clf,self.classifier)]
             else:
                 self.name = (clf,"_".join([stemmer, vectorizer]))

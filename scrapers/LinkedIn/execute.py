@@ -11,7 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import datetime
 import json
 import time
-from client import *
+from scrapers.LinkedIn.scrape import ScraperLinkdin as
 
 class skeys:
     search_keys = {

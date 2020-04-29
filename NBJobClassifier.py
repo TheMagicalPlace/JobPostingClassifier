@@ -4,28 +4,26 @@ from sklearn_extensions.NLTKUtils import *
 from sklearn_extensions.featurization import *
 from sklearn_extensions.extended_pipeline import PipelineComponents
 from joblib import load
-
+import sqlite3
+import pandas as pd
 
 class ClassificationHandler:
 
-    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Bad', 'Ideal Jobs':'Good'}
+    job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Neutral', 'Ideal Jobs':'Good'}
 
-    def __init__(self,search_term : str,stemmer : str = None,vectorizer='count',transform=False,training=True):
+    def __init__(self,search_term : str,database,stemmer : str = None,vectorizer='count',transform=False,training=True,):
         self.search_term = search_term
-        self.jobs = []
-        self.goodjobs_encoded = {}
-        self.badjobs_encoded = {}
-        self.dataset = defaultdict(list)
+        self.database = database
+        self.dataset = pd.read_sql("SELECT label,description from training",self.database)
+        print(self.dataset)
         self.stemmer = stemmer
+
 
         # live sorting uses pickled models , so no customization of text processing is allowed
         if training:
             self._jobdesc_preprocessing()
             self.vectorizer = vectorizer
             self.transform = transform
-
-    def _process_text(self):
-        pass
 
     def _jobdesc_preprocessing(self):
         '''Processes the text files to remove punctuation, noise (i.e url's), and case from the text
@@ -34,45 +32,25 @@ class ClassificationHandler:
         stemmer = PipelineComponents.stemmers[self.stemmer]
         job_cat_data = {}
         paths = {}
-        for subfolder in ['Good Jobs', 'Bad Jobs', 'Neutral Jobs', 'Ideal Jobs']:
-            paths[subfolder] = os.path.join(os.getcwd(), self.search_term, 'Train', subfolder)
-            job_cat_data[subfolder] = os.scandir(os.path.join(os.getcwd(), self.search_term, 'Train', subfolder))
-        for joblabel,data in job_cat_data.items():
-            for job in data:
-                with open(os.path.join(paths[joblabel],job.name), 'r') as jobdesc:
-                    raw = jobdesc.readlines()[7:]
-                    formatted_data = " ".join(raw)
-                self.dataset['content'].append(stemmer(formatted_data))
-                self.dataset['label'].append(ClassificationHandler.job_label_associations[joblabel])
-        self.dataset = pd.DataFrame(self.dataset)
-
-    def live_job_processing(self,directory,model=None):
-        model = os.path.join(os.getcwd(),self.search_term,'Models','model_files','No Stemmer_count_minmax_Perceptron')
-        """ Sorts job descriptions generated during actual use of the program"""
-        model = load(model)
-        model.apply_stemming = True if model.stemmer != "No Stemmer" else False
-        try:
-            with open(directory,'r') as job:
-                content = [job.read()]
-        except FileNotFoundError:
-            return
-        label = model.predict(content)
-        return label
+        for iter,row in self.dataset.iterrows():
+            self.dataset['label'][iter] = self.job_label_associations[row[0]]
+            self.dataset['description'][iter] = stemmer(row[1])
 
     def _split_dataset(self):
         """ Splits the presorted job data for model training"""
         train,test = train_test_split(self.dataset,test_size=0.3,stratify = self.dataset.label,shuffle=True)
         y_train,y_test = train.label.values,test.label.values
-        X_train,X_test = train.content.values,test.content.values
-
+        X_train,X_test = train.description.values,test.description.values
         self.X_train,self.X_test = X_train,X_test
         self.y_train,self.y_test = y_train,y_test
 
-    def model_data(self,*argss):
+    def model_data(self,iterations):
         self._split_dataset()
-        bench = BenchmarkSuite(self.search_term,self.X_train,self.X_test,self.y_train,self.y_test,stemmer=self.stemmer,vectorizer=self.vectorizer,transform=self.transform)
-        bench.show_results(silent=False,plot=False)
+        bench = BenchmarkSuite(self.search_term,self)
+        bench.benchmark_controller(iterations,plot=False)
         return 'None'
+
+
     def tune_model(self,model : str):
         self._split_dataset()
         bench = BenchmarkSuite(self.search_term, self.X_train, self.X_test, self.y_train, self.y_test,
@@ -80,25 +58,86 @@ class ClassificationHandler:
         bench.hyperparameter_tuning(model)
         return 'done'
 
+class ClassificationInterface():
+
+    def __init__(self,file_term,iterations):
+        self.file_term = file_term
+        self.iterations = iterations
+        self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
+
+
+    def train_models(self,*exclude):
+
+
+        def __run_search(file_term,iterations,stemmer,vectorizer,transformer):
+            search = ClassificationHandler(self.file_term,
+                                           self.database,
+                                           vectorizer=vectorizer,
+                                           stemmer=stemmer,
+                                           transform=transformer)
+            bench = BenchmarkSuite(file_term, search)
+            bench.benchmark_controller(iterations)
+
+
+        for vectorizer in ['count']:
+            for transformer in [None,'normal','max','tfidf']:
+                for stemmer in ['porter','snowball','lemma',None]:
+                    if vectorizer in exclude or stemmer in exclude or transformer in exclude:
+                        continue
+                    else:
+                        __run_search(self.file_term,self.iterations,stemmer,vectorizer,transformer)
+
+    def live_job_processing(self,directory,model=None):
+        model = os.path.join(os.getcwd(),self.file_term,'Models','model_files',model)
+        """ Sorts job descriptions generated during actual use of the program"""
+        model = load(model)
+        model.apply_stemming = True if model.stemmer != "No Stemmer" else False
+        try:
+            live_data = pd.read_sql("SELECT unique_id,job_title,description from unsorted",self.database)
+            with self.database:
+                cur = self.database.cursor()
+                for i,data in live_data.iterrows():
+                    live_text = data[1]+'\n'+data[2]
+                    label = model.predict(live_text)
+                    cur.execute("INSERT INTO results VALUES (?,?,?,?)",(data[0],label,data[1],data[2]))
+                    cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(data[0]))
+        except Exception as e:
+            print(e)
+
+
+    def get_best_model_configs(self):
+        pass
+
+    def tune(self):
+        active_models = ['LinearSVC',
+                          'LogisticRegressionCV',
+                          'LogisticRegression',
+                          'Perceptron',
+                          'RidgeClassifier',
+                          'SGDClassifier']
+        self.best_models = {}
+        with self.database:
+            cur = self.database.cursor()
+            for model in active_models:
+                a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",(model,))
+                self.best_models[model] = list(a)[0]
+        print(self.best_models)
+        s = ClassificationHandler(self.file_term,self.database,'snowball','count',None)
+        bench = BenchmarkSuite(self.file_term, s)
+        bench.hyperparameter_tuning('LogisticRegression')
+        # TODO add model tuning
+
+
+
 if __name__ == '__main__':
     import multiprocessing as mp
     from tqdm import tqdm
-    def tune(file_term,model):
-        search = ClassificationHandler(file_term, vectorizer='count', stemmer='snowball', transform=True)
-        search.tune_model(model)
 
 
-    @comparison_decorator
-    def searchf(file_term,iterations,stemmer,vectorizer,transformer):
-        search = ClassificationHandler(file_term, vectorizer= vectorizer,stemmer=stemmer,transform=transform)
-        for _ in tqdm(range(iterations)):
-            search.model_data()
 
+    clf = ClassificationInterface('Entry Level Computer Programmer',150)
+    clf.train_models()
 
-    for vectorizer in ['count']:
-        for transform in [None,'normal','minmax','tfidf']:
-            for stemmer in [None,'porter','snowball','lemma']:
-                searchf('Entry Level Computer Programmer',250,stemmer,vectorizer,transform)
 
 
 

@@ -6,9 +6,9 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils.extmath import density
 import numpy as np
-
+import sqlite3
 import pandas as pd
-from sklearn.model_selection import GridSearchCV,ParameterGrid,StratifiedKFold
+from sklearn.model_selection import GridSearchCV, ParameterGrid, StratifiedKFold, train_test_split
 from time import time
 from matplotlib import pyplot as plt
 import json
@@ -18,6 +18,8 @@ import warnings
 from warnings import simplefilter
 import parfit.parfit as pf
 from sklearn.metrics import roc_auc_score
+import tqdm
+from itertools import product
 
 
 def trim(s):
@@ -26,18 +28,80 @@ def trim(s):
 
 class BenchmarkSuite():
 
-    def __init__(self,search_term,X_train,X_test,y_train,y_test,stemmer,vectorizer='count',transform=False):
+    def __init__(self,search_term,classification_handler):
+
         """setting up initial data , incl. stemmer,vectorizer, transformer to be benchmarked"""
-        self.X_train, self.X_test, self.y_train, self.y_test = X_train,X_test,y_train,y_test
-        try:
-            with open(os.path.join(os.getcwd(),search_term,'Models','model_stats.json'),'r') as models:
-                self.models = json.loads(models.read())
-        except FileNotFoundError:
-            self.models = defaultdict(list)
-        self.stemmer = stemmer
-        self.vectorizer = vectorizer
-        self.transform = transform
+        self.database = classification_handler.database
+        self.dataset = classification_handler.dataset
+        self.stemmer = classification_handler.stemmer
+        self.vectorizer = classification_handler.vectorizer
+        self.transform = classification_handler.transform
+        self.get_best_model_configs()
         self.search_term = search_term
+        self.shuffle_dataset()
+        self.uid_base = "_".join([str(len(self.dataset['label'].unique())),str(self.stemmer),str(self.transform),str(self.vectorizer)])
+        self.best_score_ledger = {}
+
+
+    def get_best_model_configs(self):
+        active_models = ['LinearSVC',
+                          'LogisticRegressionCV',
+                          'LogisticRegression',
+                          'Perceptron',
+                          'RidgeClassifier',
+                          'SGDClassifier']
+        self.best_models = {}
+        with self.database:
+            cur = self.database.cursor()
+            for model in active_models:
+                a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",(model,))
+                self.best_models[model] = list(a)[0][0]
+
+    def shuffle_dataset(self):
+        """ Splits the presorted job data for model training"""
+        train,test = train_test_split(self.dataset,test_size=0.3,stratify = self.dataset.label,shuffle=True)
+        self.y_train,self.y_test = train.label.values,test.label.values
+        self.X_train,self.X_test = train.description.values,test.description.values
+
+    def benchmark_controller(self,iterations=150,silent=False):
+        no_labels = len(self.dataset['label'].unique())
+        active_models = ['LinearSVC',
+                          'LogisticRegressionCV',
+                          'LogisticRegression',
+                          'Perceptron',
+                          'RidgeClassifier',
+                          'SGDClassifier']
+        models_to_run = {model: ExtendedPipeline(model,self.vectorizer,self.transform,self.stemmer,apply_stemming=False)
+                         for model in active_models}
+        with self.database:
+            cur = self.database.cursor()
+            for model in active_models:
+                uid = self.uid_base+'_'+model
+                try:
+                    cur.execute("INSERT INTO model_performance_results VALUES (?,?,?,?,?,0,0,?)",
+                                (uid,self.stemmer,self.vectorizer,self.transform,model,no_labels))
+                    self.best_score_ledger[model] = [0, 0]
+                except sqlite3.IntegrityError:
+                    scores_to_beat = cur.execute("""SELECT f1_score,accuracy from model_performance_results
+                                                               WHERE unique_id = ? """,
+                                                              (self.uid_base+'_'+model,))
+
+                    self.best_score_ledger[model] = [_ for _ in list(scores_to_beat)[0]]
+
+        for _ in tqdm.tqdm(range(iterations)):
+            self.shuffle_dataset()
+            if silent:
+                for model in models_to_run.values():
+                    self.benchmark_silent(model)
+            else:
+                for model in models_to_run.values():
+                    self.benchmark(model)
+
+        for model in active_models:
+            uid = self.uid_base + '_' + model
+            with self.database:
+                cur = self.database.cursor()
+                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",(self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
     def benchmark_silent(self,clf,feature_names=None,target_names=None,live=False):
         """Benchmarks  without outputting detailed results to console
@@ -51,32 +115,24 @@ class BenchmarkSuite():
         train_time = time() - t0
         pred = clf.predict(X_test)
         test_time = time() - t0
-        score = metrics.accuracy_score(y_test, pred)
+        accuracy = metrics.accuracy_score(y_test, pred)
+        balanced_accuracy = metrics.balanced_accuracy_score(y_test,pred)
         name = clf.name[0]
 
         # checking if current iteration is better than current best
-        try:
-            score_stats = f'Model : {name} | Score : {self.models[name][0]}'
-        except IndexError:
-            self.models[name] = [score,clf.name[1]]
-            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
-        else:
 
-            if score > self.models[name][0]:
-                clf = self.hyperparameter_tuning(name)
-                pred = clf.predict(X_test)
-                tscore = metrics.accuracy_score(y_test, pred)
-                print(f'Original Score : {score}\nTuned Score : {tscore}')
-                if score < self.models[name][0]:
-                    clf_descr = str(clf).split('(')[0]
-                    return clf_descr, score, train_time, test_time
-                else:
-                    self.models[name] = [score, clf.name[1]]
-                    print(score_stats)
-                    dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
-        finally:
+        if self.best_score_ledger[name][0] < accuracy:
+            print(name)
+            score_stats = f'Model : {name} | Score : {accuracy}'
+            self.best_score_ledger[name] = [accuracy,balanced_accuracy]
+            print('score_stats')
+            if accuracy > self.best_models[name]:
+                new_model,score = self.hyperparameter_tuning(name,clf)
+                if score > accuracy:
+                    clf = new_model
+            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([self.uid_base,name])}'))
             clf_descr = str(clf).split('(')[0]
-            return clf_descr, score, train_time, test_time
+            return clf_descr, accuracy, train_time, test_time
 
     def benchmark(self,clf,feature_names=None,target_names=None,live=False):
         """Benchmarks and outputs detailed results to console
@@ -88,23 +144,22 @@ class BenchmarkSuite():
         clf.fit(X_train, y_train)
         train_time = time() - t0
         pred = clf.predict(X_test)
-
         test_time = time() - t0
-        score = metrics.accuracy_score(y_test, pred)
+        accuracy = metrics.accuracy_score(y_test, pred)
+        balanced_accuracy = metrics.balanced_accuracy_score(y_test, pred)
         name = clf.name[0]
 
-        try:
-            proba = clf.predict_proba(X_test)
-            name = clf.name[0]
-            #print(name,self.models[name][0])
-        except AttributeError:
-            pass
-        # checking if current iteration is better than current best
-        try:
-            score_stats = f'Model : {name} | Score : {self.models[name][0]}'
-        except IndexError:
-            self.models[name] = [score,clf.name[1]]
-            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([clf.name[1],name])}'))
+        if self.best_score_ledger[name][0] < accuracy:
+            print(name)
+            self.best_score_ledger[name] = [accuracy,balanced_accuracy]
+            score_stats = f'Model : {name} | Score : {accuracy}'
+            if accuracy >= self.best_models[name]:
+                new_model,score = self.hyperparameter_tuning(name,clf)
+                if score > accuracy:
+                    clf = new_model
+            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([self.uid_base,name])}'))
+
+            clf_descr = str(clf).split('(')[0]
 
             if hasattr(clf, 'coef_'):
                 print("dimensionality: %d" % clf.coef_.shape[1])
@@ -126,36 +181,8 @@ class BenchmarkSuite():
                 print("confusion matrix:")
                 print(metrics.confusion_matrix(y_test, pred))
 
-        else:
-            if score > self.models[name][0]:
-
-                print(clf.name)
-                self.models[name] = [score,clf.name[1]]
-                if hasattr(clf, 'coef_'):
-                    print("dimensionality: %d" % clf.coef_.shape[1])
-                    print("density: %f" % density(clf.coef_))
-
-                    if True and feature_names is not None:
-                        print("top 10 keywords per class:")
-                        for i, label in enumerate(target_names):
-                            top10 = np.argsort(clf.coef_[i])[-10:]
-                            print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
-                    print()
-
-                if True:
-                    print("classification report:")
-                    print(metrics.classification_report(y_test, pred,
-                                                        target_names=target_names))
-
-                if True:
-                    print("confusion matrix:")
-                    print(metrics.confusion_matrix(y_test, pred))
-
-
-
-        finally:
             clf_descr = str(clf).split('(')[0]
-            return clf_descr, score, train_time, test_time
+            return clf_descr, accuracy, train_time, test_time
 
     def show_results(self,plot=True,silent=False):
         """Runs the data through a preselected series of models and returns results for each"""
@@ -209,34 +236,44 @@ class BenchmarkSuite():
 
             plt.show()
 
-    def hyperparameter_tuning(self,model : str):
+    def hyperparameter_tuning(self,model : str,clf=None):
 
+        X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         print(f'Tuning {model}')
         t0 = time()
-        model = PipelineComponents.models[model]
-        pipe = ExtendedPipeline(model,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
-        params = ModelTuningParams.models[pipe.name[0]]
-        params_formatted = defaultdict(list)
-        name = pipe.name[0]
+        name = model
+        params = ModelTuningParams.models[name]
+
+        parameters = defaultdict(list)
         for k,v in params.items():
             key_formattted = "__".join([name,k])
-            params_formatted[key_formattted] = v
-        pgrid = ParameterGrid(params_formatted)
+            parameters[key_formattted] = v
 
-        tuned_pipe = SupressedGSCV(estimator = ExtendedPipeline(model,
+        base = ExtendedPipeline(model,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
+        base.fit(X_train,y_train)
+        ree = base.predict(self.X_test)
+        print(metrics.accuracy_score(y_test,ree))
+        tuned_2 = GridSearchCV(estimator=clf,param_grid=parameters,n_jobs=-1,scoring='accuracy')
+        tuned_pipe = GridSearchCV(estimator = ExtendedPipeline(model,
                                                                self.vectorizer,
                                                                transformer=self.transform,
                                                                stemmer=self.stemmer,
                                                                apply_stemming=False),
-                                  param_grid=params_formatted,
+                                  param_grid=parameters,
                                   n_jobs=-1,
-                                  verbose=0)
-        tpipe = tuned_pipe.fit(self.X_train,self.y_train)
-        print(tpipe.best_score_)
-        print(tpipe.best_params_)
+                                  verbose=0,
+                                   scoring='accuracy')
+        tuned_2.fit(X_train,y_train)
+        tuned_pipe.fit(X_train,y_train)
+        r = tuned_pipe.predict(X_test)
+        r2 = tuned_2.predict(X_test)
+        print(f' original new : {metrics.accuracy_score(y_test,r)}\n old new : {metrics.accuracy_score(y_test,r2)}')
+        print(tuned_pipe.best_score_)
+
         print(f'Time Elapsed : {time()-t0}')
-        return tpipe.best_estimator_
-def comparison_decorator(func):
+        return tuned_pipe.best_estimator_,tuned_pipe.best_score_
+
+def DEPRECIATED_comparison_decorator(func):
     """Decorator function for comparing the results of the current model settings with previous runs and settings"""
     def wrapper(*args):
 
@@ -302,8 +339,3 @@ def comparison_decorator(func):
                 models.write(json.dumps(last))
     return wrapper
 
-class SupressedGSCV(GridSearchCV):
-    warnings.filterwarnings("ignore")
-
-    def fit(self, X, y=None, groups=None, **fit_params):
-        return super().fit(X,y,groups,**fit_params)

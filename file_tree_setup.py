@@ -1,48 +1,75 @@
 import os
 
-def file_setup(search_term):
+import sqlite3
+
+def file_setup(file_term):
     """Sets up the file structure used by the program for each search term"""
     try:
-        os.mkdir(os.path.join(os.getcwd(),search_term))
+        os.mkdir(os.path.join(os.getcwd(),file_term))
     except FileExistsError:
         pass
 
+    try:
+        open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'))
+    except FileNotFoundError:
+        open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'), 'w')
+    finally:
+        with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:
+            cursor = connection.cursor()
+            for table in ['training','results','unsorted','metadata','model_performance_results']:
+                try:
+                    if table == 'unsorted':
+                        cursor.execute("""CREATE TABLE unsorted 
+                        (unique_id TEXT PRIMARY KEY,          
+                        job_title text,
+                        description text)""")
+
+                    if table == 'training':
+                        cursor.execute("""CREATE TABLE training 
+                        (unique_id TEXT PRIMARY KEY,          
+                        label text,
+                        job_title text,
+                        description text)""")
+
+                    elif table == 'metadata':
+                        cursor.execute("""CREATE TABLE metadata 
+                        (unique_id TEXT PRIMARY KEY,
+                        search_term TEXT,
+                        link TEXT, 
+                        location TEXT, 
+                        company TEXT, 
+                        date_posted TEXT)""")
+
+                    if table == 'results':
+                        cursor.execute("""CREATE TABLE results 
+                        (unique_id TEXT PRIMARY KEY,         
+                        label text,
+                        job_title text,
+                        description text)""")
+                    if table == 'model_performance_results':
+                        cursor.execute("""CREATE TABLE model_performance_results 
+                        (unique_id TEXT PRIMARY KEY,         
+                        stemmer text,
+                        vectorizer text,
+                        transformer text,
+                        model text,
+                        f1_score REAL,
+                        accuracy REAL
+                        classification_labels INT)""")
+                except sqlite3.OperationalError:
+                    pass
 
 
-    # Job Description folders
-    for folder in ['Train', 'Results']:
         try:
-            os.mkdir(os.path.join(os.getcwd(), search_term, folder))
-        except FileExistsError:
-            pass
-        for subfolder in ['Good Jobs', 'Bad Jobs', 'Neutral Jobs', 'Ideal Jobs']:
-            try:
-                os.mkdir(os.path.join(os.getcwd(), search_term, folder, subfolder))
-            except FileExistsError:
-                continue
-        if folder == 'Train':
-            try:
-                os.mkdir(os.path.join(os.getcwd(), search_term, folder, 'Other'))
-            except FileExistsError:
-                continue
-    else:
-        # Pre-sort job desc. folder
-        try:
-            os.mkdir(os.path.join(os.getcwd(), search_term, 'Unsorted'))
-        except FileExistsError:
-            pass
-
-        # classification models
-        try:
-            os.mkdir(os.path.join(os.getcwd(),search_term,'Models'))
+            os.mkdir(os.path.join(os.getcwd(),file_term,'Models'))
         except FileExistsError:
             pass
         try:
-            os.mkdir(os.path.join(os.getcwd(), search_term, 'Models','model_files'))
+            os.mkdir(os.path.join(os.getcwd(), file_term, 'Models','model_files'))
         except FileExistsError:
             pass
         try:
-            os.mkdir(os.path.join(os.getcwd(), search_term, 'Models','old'))
+            os.mkdir(os.path.join(os.getcwd(), file_term, 'Models','old'))
         except FileExistsError:
             pass
 

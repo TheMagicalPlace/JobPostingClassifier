@@ -9,6 +9,9 @@
 import PyQt5
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QColorDialog
+from scrapers import IndeedClient,LinkdinClient
+
+from scrapers import IndeedClient
 
 SCALE_FACTOR = 1.2
 class Ui_MainWindow(object):
@@ -567,7 +570,7 @@ class Ui_MainWindow(object):
         def __run_search():
             search_term = self.st_input.toPlainText()
             file_term = self.ft_input.toPlainText()
-            location = self.lk_username_in.toPlainText()
+            location = self.location_input.toPlainText()
             jobs_to_find = int(self.no_jobs_input.toPlainText())
 
             # if no file term is given, set to search term
@@ -580,8 +583,17 @@ class Ui_MainWindow(object):
                 if self.lk_checkbox.isChecked():
                     pass
                     # TODO setup secure saving of linkedin info
+                client= LinkdinClient(search_term=search_term,
+                                      file_term=file_term,
+                                      location=location,
+                                      jobs_to_find=jobs_to_find)
+                client(username,self.lk_password_in.toPlainText())
             elif self.jb_dropdown.currentText() == 'Indeed':
-                pass
+                client = IndeedClient(search_term=search_term,
+                                      file_term=file_term,
+                                      location=location,
+                                      jobs_to_find=jobs_to_find)
+                client()
                 # TODO hook up indeed scraper
 
 
@@ -1082,11 +1094,11 @@ class Ui_MainWindow(object):
             else:
                 self.run_button.setDisabled(True)
 
-        # TODO hook in search and classify elements
+        # TODO hook in classify elements
         def __run_combined():
             search_term = self.st_input_2.toPlainText()
             file_term = self.ft_input_2.toPlainText()
-            location = self.lk_username_in_2.toPlainText()
+            location = self.location_input_2.toPlainText()
             jobs_to_find = int(self.no_jobs_input_2.toPlainText())
 
             # if no file term is given, set to search term
@@ -1095,13 +1107,21 @@ class Ui_MainWindow(object):
 
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
                 username = self.lk_username_in_2.toPlainText()
-                # TODO send password directly to scraper
                 if self.lk_checkbox_2.isChecked():
                     pass
                     # TODO setup secure saving of linkedin info
+                client= LinkdinClient(search_term=search_term,
+                                      file_term=file_term,
+                                      location=location,
+                                      jobs_to_find=jobs_to_find)
+                client(username, self.lk_password_in_2.toPlainText())
+
             elif self.jb_dropdown_2.currentText() == 'Indeed':
-                pass
-                # TODO hook up indeed scraper
+                client = IndeedClient(search_term=search_term,
+                                      file_term=file_term,
+                                      location=location,
+                                      jobs_to_find=jobs_to_find)
+                client()
 
         def __clinkedin_forms_toggle():
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
