@@ -61,4 +61,4 @@ class JSONProcessor:
 if __name__ == '__main__':
     json_to_text = JSONProcessor('Chemical Engineer')
     json_to_text()
-    print(len([e for e in os.scandir('Chemical Engineer/')]))
+    print(len([e for e in os.scandir('../Chemical Engineer/')]))

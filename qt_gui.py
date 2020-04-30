@@ -7,14 +7,40 @@
 # WARNING! All changes made in this file will be lost!
 
 import PyQt5
+import os,json
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QColorDialog
 from scrapers import IndeedClient,LinkdinClient
-
-from scrapers import IndeedClient
+from NBJobClassifier import ClassificationInterface
+import sqlite3
+from collections import defaultdict
 
 SCALE_FACTOR = 1.2
 class Ui_MainWindow(object):
+
+    def __update_file_terms(self,file_term):
+        with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
+            settings = json.loads(data.read())
+            setdict = defaultdict(list, settings)
+
+            if file_term not in setdict['file_terms']:
+                setdict['file_terms'].append(file_term)
+            file_terms = setdict['file_terms']
+            data.seek(0)
+            data.write(json.dumps(dict(setdict)))
+        return file_terms
+
+    def __get_file_terms(self):
+        with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
+            terms = defaultdict(list,json.loads(data.read()))
+        if not terms['None']:
+            terms = self.__update_file_terms('None')
+        return terms
+
+    def file_term_dropdown(self,dropdown):
+        _translate = QtCore.QCoreApplication.translate
+        for i,term in enumerate(self.__get_file_terms()):
+            dropdown.addItem(term)
 
     def __setup_top_menu(self):
 
@@ -569,13 +595,17 @@ class Ui_MainWindow(object):
 
         def __run_search():
             search_term = self.st_input.toPlainText()
-            file_term = self.ft_input.toPlainText()
+            file_term = self.ft_input.currentText()
             location = self.location_input.toPlainText()
             jobs_to_find = int(self.no_jobs_input.toPlainText())
 
             # if no file term is given, set to search term
-            if not file_term:
+            if file_term == 'None':
                 file_term = search_term
+                self.__update_file_terms(file_term)
+
+            terms = self.__get_file_terms()
+
 
             if self.jb_dropdown.currentText() == 'LinkedIn':
                 username = self.lk_username_in.toPlainText()
@@ -649,8 +679,9 @@ class Ui_MainWindow(object):
             self.ft_label.setAlignment(QtCore.Qt.AlignCenter)
             self.ft_label.setObjectName("ft_label")
             self.verticalLayout_3.addWidget(self.ft_label)
-            self.ft_input = QtWidgets.QTextEdit(self.file_term_input)
-            self.ft_input.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.ft_input = QtWidgets.QComboBox(self.file_term_input)
+            self.ft_input.setLayoutDirection(QtCore.Qt.LeftToRight)
+            self.file_term_dropdown(self.ft_input)
             self.ft_input.setObjectName("ft_input")
             self.verticalLayout_3.addWidget(self.ft_input)
             self.location_container = QtWidgets.QGroupBox(self.search_cont)
@@ -792,14 +823,16 @@ class Ui_MainWindow(object):
     def __setup_clf_tab(self):
 
         def __toggle_activate_button():
-            if self.clf_term_input.toPlainText():
+            if self.clf_term_input.currentText() !='None':
                 self.activate_classifier_button.setEnabled(True)
             else:
                 self.activate_classifier_button.setEnabled(False)
 
         # TODO - hook in classifier and check pertinent conditions
         def __run_classifier():
-            pass
+            file_term = self.clf_term_input.currentText()
+            clfI = ClassificationInterface(file_term,1,mode='live',no_labels=2)
+            clfI.classify_live_jobs()
 
         # TODO - link with results dipslay
         def __show_results():
@@ -833,15 +866,13 @@ class Ui_MainWindow(object):
             self.clf_term_label.setAlignment(QtCore.Qt.AlignCenter)
             self.clf_term_label.setObjectName("clf_term_label")
             self.verticalLayout_4.addWidget(self.clf_term_label)
-            self.clf_term_input = QtWidgets.QTextEdit(self.clf_term_container)
-            self.clf_term_input.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            self.clf_term_input.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            self.clf_term_input.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
-            self.clf_term_input.setAcceptRichText(True)
+            self.clf_term_input = QtWidgets.QComboBox(self.clf_term_container)
+            self.clf_term_input.setLayoutDirection(QtCore.Qt.LeftToRight)
+            self.file_term_dropdown(self.clf_term_input)
             self.clf_term_input.setObjectName("clf_term_input")
             self.verticalLayout_4.addWidget(self.clf_term_input)
 
-            self.clf_term_input.textChanged.connect(__toggle_activate_button)
+            self.clf_term_input.currentTextChanged.connect(__toggle_activate_button)
 
         # info text
         if True:
@@ -910,8 +941,20 @@ class Ui_MainWindow(object):
 
     def __setup_train_tab(self):
 
+
+        def __get_train_data(database):
+            job_data = {}
+            with database:
+                cur = database.cursor()
+                job_data['total'] = cur.execute("SELECT COUNT(unique_id) from training").fetchall()
+
+                for lab in ['Good Jobs','Bad Jobs','Neutral Jobs', "Ideal Jobs"]:
+                    job_data[lab] = cur.execute("SELECT COUNT(unique_id) from training WHERE label = ?",(lab,)).fetchall()
+            return job_data
+
         def __toggle_train_button():
-            if self.train_term_input.toPlainText():
+            file_term = self.train_term_input.currentText()
+            if file_term != 'None':
                 iters = self.iter_input.toPlainText()
                 try:
                     iters = int(iters)
@@ -921,9 +964,17 @@ class Ui_MainWindow(object):
                 else:
                     if self.iter_use_default_check.isChecked() or iters:
                         # TODO add check for acceptable no of training data
-                        if True:
+                        if file_term in self.__get_file_terms():
+                            job_data = __get_train_data(sqlite3.connect(os.path.join(os.getcwd(),
+                                                                                     file_term,
+                                                                                     f'{file_term}.db')))
                             self.train_button.setEnabled(True)
-                            return
+                        else:
+                            self.train_button.setEnabled(False)
+
+
+
+
             # disables if any conditions fail
             self.train_button.setEnabled(False)
 
@@ -932,8 +983,10 @@ class Ui_MainWindow(object):
             # TODO hook up with sort gui
 
         def __run_training():
-            file_term = self.clf_term_input.toPlainText()
+            file_term = self.clf_term_input.currentText()
             iterations = int(self.iter_input.toPlainText())
+            handler = ClassificationInterface(file_term=file_term,iterations=iterations)
+            handler.train_models(silent=True,plot=False)
             # TODO hook up with training module + add condition for insufficient training data
 
         self.Train = QtWidgets.QWidget()
@@ -955,12 +1008,12 @@ class Ui_MainWindow(object):
             self.train_term_label.setFont(font)
             self.train_term_label.setAlignment(QtCore.Qt.AlignCenter)
             self.train_term_label.setObjectName("train_term_label")
-            self.train_term_input = QtWidgets.QTextEdit(self.train_term_container)
+            self.train_term_input = QtWidgets.QComboBox(self.train_term_container)
             self.train_term_input.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(39*SCALE_FACTOR), int(201*SCALE_FACTOR), int(31*SCALE_FACTOR)))
-            self.train_term_input.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            self.train_term_input.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
-            self.train_term_input.setAcceptRichText(True)
+            self.train_term_input.setLayoutDirection(QtCore.Qt.LeftToRight)
+
             self.train_term_input.setObjectName("train_term_input")
+            self.file_term_dropdown(self.train_term_input)
             # open sorting button
             self.manual_sort_button = QtWidgets.QPushButton(self.train_term_container)
             self.manual_sort_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(82*SCALE_FACTOR), int(201*SCALE_FACTOR), int(51*SCALE_FACTOR)))
@@ -968,7 +1021,7 @@ class Ui_MainWindow(object):
             font.setPointSize(15)
             self.manual_sort_button.setFont(font)
             self.manual_sort_button.setObjectName("manual_sort_button")
-            self.train_term_input.textChanged.connect(__toggle_train_button)
+            self.train_term_input.currentTextChanged.connect(__toggle_train_button)
             self.manual_sort_button.clicked.connect(__sort_train_button)
 
         #progress bar
@@ -1096,14 +1149,16 @@ class Ui_MainWindow(object):
 
         # TODO hook in classify elements
         def __run_combined():
+            """ run a job search followed by classification"""
             search_term = self.st_input_2.toPlainText()
-            file_term = self.ft_input_2.toPlainText()
+            file_term = self.ft_dropdown_input_2.currentText()
             location = self.location_input_2.toPlainText()
             jobs_to_find = int(self.no_jobs_input_2.toPlainText())
 
             # if no file term is given, set to search term
-            if not file_term:
+            if file_term == 'None':
                 file_term = search_term
+                self.__update_file_terms(file_term)
 
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
                 username = self.lk_username_in_2.toPlainText()
@@ -1122,6 +1177,10 @@ class Ui_MainWindow(object):
                                       location=location,
                                       jobs_to_find=jobs_to_find)
                 client()
+
+            clfI = ClassificationInterface(file_term,1,mode='live',no_labels=2)
+            clfI.classify_live_jobs()
+
 
         def __clinkedin_forms_toggle():
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
@@ -1286,10 +1345,14 @@ class Ui_MainWindow(object):
             self.ft_label_2.setFont(font)
             self.ft_label_2.setAlignment(QtCore.Qt.AlignCenter)
             self.ft_label_2.setObjectName("ft_label_2")
-            self.ft_input_2 = QtWidgets.QTextEdit(self.file_term_container_2)
-            self.ft_input_2.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(49*SCALE_FACTOR), int(191*SCALE_FACTOR), int(31*SCALE_FACTOR)))
-            self.ft_input_2.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            self.ft_input_2.setObjectName("ft_input_2")
+
+            self.ft_dropdown_input_2 = QtWidgets.QComboBox(self.file_term_container_2)
+            self.ft_dropdown_input_2.setLayoutDirection(QtCore.Qt.LeftToRight)
+            self.ft_dropdown_input_2.setGeometry(
+                QtCore.QRect(int(10 * SCALE_FACTOR), int(49 * SCALE_FACTOR), int(191 * SCALE_FACTOR), int(31 * SCALE_FACTOR)))
+            #self.ft_dropdown_input_2.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.file_term_dropdown(self.ft_dropdown_input_2)
+            self.ft_dropdown_input_2.setObjectName("ft_dropdown_input_2")
 
         # search term elements
         if True:
@@ -1440,12 +1503,12 @@ class Ui_MainWindow(object):
         self.search_button.setText(_translate("MainWindow", "Search"))
         self.MainTab.setTabText(self.MainTab.indexOf(self.Search), _translate("MainWindow", "Search"))
         self.clf_term_label.setText(_translate("MainWindow", "Classification Term"))
-        self.clf_term_input.setHtml(_translate("MainWindow",
-                                               "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-                                               "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-                                               "p, li { white-space: pre-wrap; }\n"
-                                               "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                               "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+        #self.clf_term_input.setHtml(_translate("MainWindow",
+        #                                       "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+        #                                       "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+        #                                       "p, li { white-space: pre-wrap; }\n"
+        #                                       "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
+        #                                       "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.clf_info.setHtml(_translate("MainWindow",
                                          "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
                                          "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
@@ -1471,12 +1534,12 @@ class Ui_MainWindow(object):
         self.open_results_button.setText(_translate("MainWindow", "Open Results Folder"))
         self.MainTab.setTabText(self.MainTab.indexOf(self.Classify), _translate("MainWindow", "Classify"))
         self.train_term_label.setText(_translate("MainWindow", "File Term"))
-        self.train_term_input.setHtml(_translate("MainWindow",
-                                                 "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-                                                 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-                                                 "p, li { white-space: pre-wrap; }\n"
-                                                 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                                 "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+        #self.train_term_input.setHtml(_translate("MainWindow",
+        #                                         "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+        #                                         "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+        #                                         "p, li { white-space: pre-wrap; }\n"
+        #                                         "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
+        #                                         "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.manual_sort_button.setText(_translate("MainWindow", "Manually Sort Jobs"))
         self.train_progress.setFormat(_translate("MainWindow", "%p%"))
         self.iter_per_round_label.setText(_translate("MainWindow", "Iterations Per Round"))

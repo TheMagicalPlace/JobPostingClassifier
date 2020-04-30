@@ -94,7 +94,7 @@ class ScraperBase(abc.ABC):
                 cur.execute("INSERT INTO metadata VALUES (?,?,?,?,?,?)",(job_uid,self.search_term,link,location,company,post_date))
 
         except sqlite3.IntegrityError:
-            pass
+            print('Operational Error with job insert')
         else:
             with self.database as cdb:
                 cur = cdb.cursor()

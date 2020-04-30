@@ -28,16 +28,26 @@ def trim(s):
 
 class BenchmarkSuite():
 
-    def __init__(self,search_term,classification_handler):
+    def __init__(self, file_term, classification_handler,iterations,tuning_depth : str = 'minimal'):
 
-        """setting up initial data , incl. stemmer,vectorizer, transformer to be benchmarked"""
+        """setting up initial data , incl. stemmer,vectorizer, transformer to be benchmarked
+
+        attributes:
+            file_term - the name of the file folder the database and models are located in
+            classification_handler - container for keeping track of training data and model configurations
+            iterations - number of iterations to run during training for each model
+            tuning_complexity (None,'minimal','regular','max') - how often the best found model should be tuned using
+            GridSearchCV
+
+        """
+        self.tuning_depth = tuning_depth
         self.database = classification_handler.database
         self.dataset = classification_handler.dataset
         self.stemmer = classification_handler.stemmer
         self.vectorizer = classification_handler.vectorizer
         self.transform = classification_handler.transform
-        self.get_best_model_configs()
-        self.search_term = search_term
+        self.iterations = iterations
+        self.file_term = file_term
         self.shuffle_dataset()
         self.uid_base = "_".join([str(len(self.dataset['label'].unique())),str(self.stemmer),str(self.transform),str(self.vectorizer)])
         self.best_score_ledger = {}
@@ -48,13 +58,21 @@ class BenchmarkSuite():
                           'LogisticRegressionCV',
                           'LogisticRegression',
                           'Perceptron',
-                          'RidgeClassifier',
+                          'RidgeClassifierCV',
                           'SGDClassifier']
         self.best_models = {}
         with self.database:
             cur = self.database.cursor()
             for model in active_models:
-                a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",(model,))
+                if self.tuning_depth == 'minimal':
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results")
+                elif self.tuning_depth == 'normal':
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
+                                    (model,))
+                elif self.tuning_depth == 'maximal':
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
+                                    (model,))
+                    # TODO not implimented, same as normal
                 self.best_models[model] = list(a)[0][0]
 
     def shuffle_dataset(self):
@@ -63,13 +81,14 @@ class BenchmarkSuite():
         self.y_train,self.y_test = train.label.values,test.label.values
         self.X_train,self.X_test = train.description.values,test.description.values
 
-    def benchmark_controller(self,iterations=150,silent=False):
+    def training_controller(self, silent=True, plot=False):
+        """Runs the data through a preselected series of models and returns results for each"""
         no_labels = len(self.dataset['label'].unique())
         active_models = ['LinearSVC',
                           'LogisticRegressionCV',
                           'LogisticRegression',
                           'Perceptron',
-                          'RidgeClassifier',
+                          'RidgeClassifierCV',
                           'SGDClassifier']
         models_to_run = {model: ExtendedPipeline(model,self.vectorizer,self.transform,self.stemmer,apply_stemming=False)
                          for model in active_models}
@@ -85,56 +104,53 @@ class BenchmarkSuite():
                     scores_to_beat = cur.execute("""SELECT f1_score,accuracy from model_performance_results
                                                                WHERE unique_id = ? """,
                                                               (self.uid_base+'_'+model,))
-
                     self.best_score_ledger[model] = [_ for _ in list(scores_to_beat)[0]]
 
-        for _ in tqdm.tqdm(range(iterations)):
+        self.get_best_model_configs()
+        results = defaultdict(dict)
+
+        for _ in tqdm.tqdm(range(self.iterations)):
             self.shuffle_dataset()
-            if silent:
-                for model in models_to_run.values():
-                    self.benchmark_silent(model)
-            else:
-                for model in models_to_run.values():
-                    self.benchmark(model)
+            for name,model in models_to_run.items():
+                res = self.train_models(model, silent=silent)
+                scre = res[2]
+                if plot and scre > results[name]['score']:
+                    results[name] = res
 
         for model in active_models:
             uid = self.uid_base + '_' + model
             with self.database:
                 cur = self.database.cursor()
-                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",(self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
+                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",
+                            (self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
-    def benchmark_silent(self,clf,feature_names=None,target_names=None,live=False):
-        """Benchmarks  without outputting detailed results to console
+        if plot==True:
 
-        Only reports when a model with a higher accuracy is found, reporting model name and accuracy score."""
+            scores = []
+            times = []
+            for model_name, best_stats in results.items():
+                _, score, training_time, test_time = best_stats
+                scores.append(score)
+                times.append(np.array(training_time) / np.max(training_time)
+                             + np.array(test_time) / np.max(test_time))
+            indices = np.arange(len(active_models))
 
+            plt.figure(figsize=(12, 8))
+            plt.title("Score")
+            plt.barh(indices, scores, .2, label="score", color='navy')
+            plt.barh(indices + .3, times, .2, label="run time", color='darkorange')
+            plt.yticks(())
+            plt.legend(loc='best')
+            plt.subplots_adjust(left=.25)
+            plt.subplots_adjust(top=.95)
+            plt.subplots_adjust(bottom=.05)
 
-        X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
-        t0 = time()
-        clf.fit(X_train, y_train)
-        train_time = time() - t0
-        pred = clf.predict(X_test)
-        test_time = time() - t0
-        accuracy = metrics.accuracy_score(y_test, pred)
-        balanced_accuracy = metrics.balanced_accuracy_score(y_test,pred)
-        name = clf.name[0]
+            for i, c in zip(indices, active_models):
+                plt.text(-.3, i, c)
 
-        # checking if current iteration is better than current best
+            plt.show()
 
-        if self.best_score_ledger[name][0] < accuracy:
-            print(name)
-            score_stats = f'Model : {name} | Score : {accuracy}'
-            self.best_score_ledger[name] = [accuracy,balanced_accuracy]
-            print('score_stats')
-            if accuracy > self.best_models[name]:
-                new_model,score = self.hyperparameter_tuning(name,clf)
-                if score > accuracy:
-                    clf = new_model
-            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([self.uid_base,name])}'))
-            clf_descr = str(clf).split('(')[0]
-            return clf_descr, accuracy, train_time, test_time
-
-    def benchmark(self,clf,feature_names=None,target_names=None,live=False):
+    def train_models(self, clf, silent, feature_names=None, target_names=None, live=False):
         """Benchmarks and outputs detailed results to console
 
         Only reports when a model with a higher accuracy is found, returns accuracy, f1 score, model parameters
@@ -146,49 +162,57 @@ class BenchmarkSuite():
         pred = clf.predict(X_test)
         test_time = time() - t0
         accuracy = metrics.accuracy_score(y_test, pred)
-        balanced_accuracy = metrics.balanced_accuracy_score(y_test, pred)
+        fbeta = metrics.fbeta_score(y_test, pred,1,labels=self.dataset['label'].unique(),average='weighted')
         name = clf.name[0]
 
         if self.best_score_ledger[name][0] < accuracy:
+            last = self.best_score_ledger[name][0]
             print(name)
-            self.best_score_ledger[name] = [accuracy,balanced_accuracy]
-            score_stats = f'Model : {name} | Score : {accuracy}'
-            if accuracy >= self.best_models[name]:
+            self.best_score_ledger[name] = [accuracy,fbeta]
+            score_stats = f'Model : {name} | Score : {accuracy} | F-beta : {fbeta}'
+            print(self.stemmer, ' ', self.transform)
+            print(score_stats)
+
+            if accuracy > self.best_models[name] and last != 0.0 and self.tuning_depth in ['normal','maximal']:
+
                 new_model,score = self.hyperparameter_tuning(name,clf)
                 if score > accuracy:
+                    self.best_score_ledger[name][0] = score
                     clf = new_model
-            dump(clf,os.path.join(os.getcwd(),self.search_term,'Models','model_files',f'{"_".join([self.uid_base,name])}'))
+            dump(clf, os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}'))
+
+
+            if not silent:
+                if hasattr(clf, 'coef_'):
+                    print("dimensionality: %d" % clf.coef_.shape[1])
+                    print("density: %f" % density(clf.coef_))
+
+                    if True and feature_names is not None:
+                        print("top 10 keywords per class:")
+                        for i, label in enumerate(target_names):
+                            top10 = np.argsort(clf.coef_[i])[-10:]
+                            print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
+                    print()
+
+                if True:
+                    print("classification report:")
+                    print(metrics.classification_report(y_test, pred,
+                                                        target_names=target_names))
+
+                if True:
+                    print("confusion matrix:")
+                    print(metrics.confusion_matrix(y_test, pred))
 
             clf_descr = str(clf).split('(')[0]
-
-            if hasattr(clf, 'coef_'):
-                print("dimensionality: %d" % clf.coef_.shape[1])
-                print("density: %f" % density(clf.coef_))
-
-                if True and feature_names is not None:
-                    print("top 10 keywords per class:")
-                    for i, label in enumerate(target_names):
-                        top10 = np.argsort(clf.coef_[i])[-10:]
-                        print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
-                print()
-
-            if True:
-                print("classification report:")
-                print(metrics.classification_report(y_test, pred,
-                                                    target_names=target_names))
-
-            if True:
-                print("confusion matrix:")
-                print(metrics.confusion_matrix(y_test, pred))
-
-            clf_descr = str(clf).split('(')[0]
-            return clf_descr, accuracy, train_time, test_time
+        return clf_descr, accuracy, train_time, test_time
 
     def show_results(self,plot=True,silent=False):
         """Runs the data through a preselected series of models and returns results for each"""
 
-        models_to_run  = {model:PipelineComponents.models[model] for model in ['LinearSVC','LogisticRegressionCV','LogisticRegression','Perceptron','RidgeClassifier','SGDClassifier']}
-        benchmark = self.benchmark
+        models_to_run  = {model:PipelineComponents.models[model] for model in
+                          ['LinearSVC',
+                           'LogisticRegressionCV','LogisticRegression','Perceptron','RidgeClassifier','SGDClassifier']}
+        benchmark = self.train_models
         b_silent = self.benchmark_silent
         results = []
         for nam , clf in models_to_run.items():
@@ -213,7 +237,7 @@ class BenchmarkSuite():
         test_time = np.array(test_time) / np.max(test_time)
 
         # saving run results
-        with open(os.path.join(os.getcwd(),self.search_term,'Models','model_stats.json'),'w') as models:
+        with open(os.path.join(os.getcwd(), self.file_term, 'Models', 'model_stats.json'), 'w') as models:
             m = json.dumps(self.models)
             models.write(m)
 
@@ -237,7 +261,8 @@ class BenchmarkSuite():
             plt.show()
 
     def hyperparameter_tuning(self,model : str,clf=None):
-
+        if model in ['LogisticRegressionCV','RidgeClassifierCV']:
+            return clf,0
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         print(f'Tuning {model}')
         t0 = time()
@@ -251,8 +276,8 @@ class BenchmarkSuite():
 
         base = ExtendedPipeline(model,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
         base.fit(X_train,y_train)
-        ree = base.predict(self.X_test)
-        print(metrics.accuracy_score(y_test,ree))
+
+
         tuned_2 = GridSearchCV(estimator=clf,param_grid=parameters,n_jobs=-1,scoring='accuracy')
         tuned_pipe = GridSearchCV(estimator = ExtendedPipeline(model,
                                                                self.vectorizer,
@@ -267,11 +292,24 @@ class BenchmarkSuite():
         tuned_pipe.fit(X_train,y_train)
         r = tuned_pipe.predict(X_test)
         r2 = tuned_2.predict(X_test)
-        print(f' original new : {metrics.accuracy_score(y_test,r)}\n old new : {metrics.accuracy_score(y_test,r2)}')
-        print(tuned_pipe.best_score_)
-
         print(f'Time Elapsed : {time()-t0}')
-        return tuned_pipe.best_estimator_,tuned_pipe.best_score_
+        print(f'unmodified : {metrics.accuracy_score(y_test,base.predict(X_test))} original new : {metrics.accuracy_score(y_test,r)}\n old new : {metrics.accuracy_score(y_test,r2)}')
+
+        ree = metrics.accuracy_score(y_test,base.predict(X_test))
+        re = metrics.accuracy_score(y_test,r)
+        re2 = metrics.accuracy_score(y_test,r2)
+        print(tuned_pipe.best_score_)
+        print(tuned_2.best_score_)
+
+        if ree > re2 and ree > re:
+            return base,ree
+        elif re > re2:
+            return tuned_pipe.best_estimator_,re
+        else:
+            return tuned_2.best_estimator_,re2
+
+
+
 
 def DEPRECIATED_comparison_decorator(func):
     """Decorator function for comparing the results of the current model settings with previous runs and settings"""

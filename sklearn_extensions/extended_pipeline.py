@@ -1,5 +1,5 @@
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeClassifier
+from sklearn.linear_model import RidgeClassifierCV
 from sklearn.svm import LinearSVC,SVC
 from sklearn.preprocessing import MinMaxScaler,MaxAbsScaler,Normalizer,RobustScaler
 from sklearn.linear_model import SGDClassifier
@@ -64,12 +64,12 @@ class ModelTuningParams:
             'n_iter_no_change' : [5,25,100],
             'early_stopping' : [False,True]
         },
-        'RidgeClassifier': {
+        'RidgeClassifierCV': {
             'alpha' : [0.1,1,10,100,1000],
             'fit_intercept' : [True,False],
             'max_iter': [-1],#[100, 1000, 5000],
             'tol': [1e-2, 1e-3, 1e-4],
-            'solver' : ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag'],
+            'solver' : ['auto', 'sparse_cg', 'sag'],
         },
         'PassiveAggressiveClassifier':{
             'C': [0.1, 1, 10, 100],
@@ -127,7 +127,7 @@ class ModelTuningParams:
             'C': [0.01,0.1, 1, 10,],
             'tol': [1e-2, 1e-3, 1e-4],
             'fit_intercept': [True],
-            'max_iter': [-1],  # [100, 1000, 2500],
+            'max_iter': [5000,10000],  # [100, 1000, 2500],
             'dual': [False]},
         'SVC' : {
             'C': [0.1, 1, 10, 100, 1000],
@@ -144,15 +144,15 @@ class ModelTuningParams:
             'penalty': ['l1', 'l2',"elasticnet"],
             'loss': ['hinge','modified_huber'],
             #'l1_ratio' : [0.05,0.15,0.3,0.5],
-            'fit_intercept': [False, True],
+            #'fit_intercept': [True],
             'max_iter': [2500,5000],
             #'tol': [1e-2, 1e-3, 1e-4, 1e-5],
-            'shuffle' : [True],
-            'epsilon' : [0.1,0.5,1,10,100],
+            'shuffle' : [False],
+            'epsilon' : [0.1,0.5,1],
             'learning_rate' : ['optimal','adaptive'],
-            'eta0': [0.001,0.1, 1],
+            'eta0': [0.00001, 1],
             'early_stopping': [True],
-            'power_t' : [0.5]
+            #'power_t' : [0.5]
         },
         'MultinomialNB' : {
             'alpha' : [0.1,1,10,100],
@@ -173,7 +173,7 @@ class ModelTuningParams:
 
 class PipelineComponents:
     models = {
-        'RidgeClassifier': RidgeClassifier(tol=1e-2, solver="sag"),
+        'RidgeClassifierCV': RidgeClassifierCV(),
         'Perceptron': Perceptron(max_iter=50,penalty='l1'),
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
         'KNeighborsClassifier': KNeighborsClassifier(n_neighbors=50),
@@ -187,7 +187,7 @@ class PipelineComponents:
         'ComplementNB': ComplementNB(alpha=.1),
         'SVC':SVC(),
         'LogisticRegression': LogisticRegression(solver='lbfgs',max_iter=5000,penalty='l2'),
-        'LogisticRegressionCV' : LogisticRegressionCV(penalty='l2',solver='lbfgs',max_iter=5000,n_jobs=-1)
+        'LogisticRegressionCV' : LogisticRegressionCV(max_iter=5000,n_jobs=-1)
     }
 
     vectorizers = {
@@ -307,6 +307,9 @@ class ExtendedPipeline(Pipeline):
         X = self._stem(X)
         return super().fit_transform(X,y=y,**fit_params)
 
+    def transform(self,X):
+        X = self._stem(X)
+        return super().transform(X)
     def predict(self, X :Iterable[Any], **predict_params):
         X = self._stem(X)
         return super().predict(X,**predict_params)

@@ -54,27 +54,19 @@ def file_setup(file_term):
                         transformer text,
                         model text,
                         f1_score REAL,
-                        accuracy REAL
+                        accuracy REAL,
                         classification_labels INT)""")
                 except sqlite3.OperationalError:
                     pass
 
+        try:
+            os.mkdir(os.path.join(os.getcwd(),file_term,'models'))
+        except FileExistsError:
+            pass
 
-        try:
-            os.mkdir(os.path.join(os.getcwd(),file_term,'Models'))
-        except FileExistsError:
-            pass
-        try:
-            os.mkdir(os.path.join(os.getcwd(), file_term, 'Models','model_files'))
-        except FileExistsError:
-            pass
-        try:
-            os.mkdir(os.path.join(os.getcwd(), file_term, 'Models','old'))
-        except FileExistsError:
-            pass
 
 
 
 
 if __name__ == '__main__':
-    file_setup('Entry Level Computer Programmer')
+    file_setup('Chemical Engineer')
