@@ -1,5 +1,5 @@
 from scrapers import *
-from job_data_write import *
+from unused_files.job_data_write import *
 from file_tree_setup import *
 from NBJobClassifier import *
 import json

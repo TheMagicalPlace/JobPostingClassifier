@@ -38,6 +38,7 @@ class IndeedClient:
         self.driver_startup()
         self.navigate_to_jobs(self.search_term,self.location)
         self.navigate_through_pages()
+        self.driver.close()
 
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
@@ -89,7 +90,8 @@ class IndeedClient:
             try:
                 ele.click()
             except ElementClickInterceptedException:
-                ele.send_keys(Keys.ESCAPE)
+                a = self.driver.switch_to.alert()
+                a.dismiss()
                 ele.click()
 
             # waiting for each panel to load
