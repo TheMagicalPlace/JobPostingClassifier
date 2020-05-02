@@ -103,7 +103,7 @@ class StemTokenizer:
         self.wnl = PorterStemmer()
 
     def __call__(self, doc):
-        return [self.wnl.stem(t) for t in word_tokenize(doc)]
+        return [self.wnl.stem(t) for t in create_tokens(doc)]
 
 
 class SnowballTokenizer:

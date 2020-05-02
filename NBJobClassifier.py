@@ -142,7 +142,8 @@ class ClassificationInterface():
                     else:
                         search = ClassificationHandler(self.file_term,
                                                        self.database,
-                                                       self.no_labels,
+                                                       mode='train',
+                                                       no_labels=self.no_labels,
                                                        vectorizer=vectorizer,
                                                        stemmer=stemmer,
                                                        transform=transformer)
