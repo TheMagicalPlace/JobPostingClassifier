@@ -14,14 +14,15 @@ from scrapers import IndeedClient,LinkdinClient
 from NBJobClassifier import ClassificationInterface
 import sqlite3
 from collections import defaultdict
-
+from webdriver_handlers import DriverManagerChrome,DriverManagerFirefox
+from train_select import *
+from result_navigator import ResultsWindow
 SCALE_FACTOR = 1.2
 class Ui_MainWindow(object):
 
     def __update_file_terms(self,file_term):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
-            setdict = defaultdict(list, settings)
             setdict = defaultdict(list, settings)
 
             if file_term not in setdict['file_terms']:
@@ -32,10 +33,9 @@ class Ui_MainWindow(object):
         return file_terms
 
     def __get_file_terms(self):
-
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
-            terms = defaultdict(list,json.loads(data.read()))
-        if not terms['None']:
+            terms = defaultdict(list,json.loads(data.read()))['file_terms']
+        if 'None' not in  terms:
             terms = self.__update_file_terms('None')
         return terms
 
@@ -46,11 +46,13 @@ class Ui_MainWindow(object):
 
     def __setup_top_menu(self):
 
-        # TODO setup top buttons
+        # TODO add exception catching for invalid os or timeout
         def __download_chromedriver():
-            pass
+            manager= DriverManagerChrome()
+            manager.download_drivers()
         def download_geckodriver():
-            pass
+            manager = DriverManagerFirefox()
+            manager.download_drivers()
         def __send_usage_info():
             pass
         def __report_issue():
@@ -827,18 +829,21 @@ class Ui_MainWindow(object):
         def __toggle_activate_button():
             if self.clf_term_input.currentText() !='None':
                 self.activate_classifier_button.setEnabled(True)
+                self.open_results_button.setEnabled(True)
             else:
                 self.activate_classifier_button.setEnabled(False)
-
+                self.open_results_button.setEnabled(False)
         # TODO - hook in classifier and check pertinent conditions
         def __run_classifier():
             file_term = self.clf_term_input.currentText()
             clfI = ClassificationInterface(file_term,1,mode='live',no_labels=2)
             clfI.classify_live_jobs()
 
-        # TODO - link with results dipslay
         def __show_results():
-            pass
+            resultwindow = QtWidgets.QMainWindow()
+            result_ui = ResultsWindow(resultwindow,self.clf_term_input.currentText())
+            resultwindow.show()
+
         self.Classify = QtWidgets.QWidget()
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(0)
@@ -938,7 +943,7 @@ class Ui_MainWindow(object):
             self.open_results_button.setObjectName("open_results_button")
             self.verticalLayout_52.addWidget(self.open_results_button)
             self.open_results_button.clicked.connect(__show_results)
-
+            self.open_results_button.setEnabled(False)
         self.MainTab.addTab(self.Classify, "")
 
     def __setup_train_tab(self):
@@ -971,6 +976,7 @@ class Ui_MainWindow(object):
                                                                                      file_term,
                                                                                      f'{file_term}.db')))
                             self.train_button.setEnabled(True)
+                            return
                         else:
                             self.train_button.setEnabled(False)
 
@@ -981,13 +987,16 @@ class Ui_MainWindow(object):
             self.train_button.setEnabled(False)
 
         def __sort_train_button():
-            pass
-            # TODO hook up with sort gui
+
+            sortwindow = QtWidgets.QMainWindow()
+            ui = TrainSelectWindow(sortwindow,self.train_term_input.currentText())
+
+            sortwindow.show()
 
         def __run_training():
-            file_term = self.clf_term_input.currentText()
+            file_term = self.train_term_input.currentText()
             iterations = int(self.iter_input.toPlainText())
-            handler = ClassificationInterface(file_term=file_term,iterations=iterations)
+            handler = ClassificationInterface(file_term=file_term,iterations=iterations,no_labels=2)
             handler.train_models(silent=True,plot=False)
             # TODO hook up with training module + add condition for insufficient training data
 
@@ -1023,7 +1032,7 @@ class Ui_MainWindow(object):
             font.setPointSize(15)
             self.manual_sort_button.setFont(font)
             self.manual_sort_button.setObjectName("manual_sort_button")
-            self.train_term_input.currentTextChanged.connect(__toggle_train_button)
+            self.train_term_input.activated.connect(__toggle_train_button)
             self.manual_sort_button.clicked.connect(__sort_train_button)
 
         #progress bar
@@ -1098,15 +1107,24 @@ class Ui_MainWindow(object):
         # 3 - Location
         # 4 - Username, only required for linkedin
         # 5 - Password - only required for linkedin
-        run_flag_container = {1: False, 2: False, 3: False, 4: True, 5: True}
+        # 6 - File term - must be set when running combined search to get models
+        run_flag_container = {1: False, 2: False, 3: False, 4: True, 5: True, 6: False}
 
         def __search_switch():
             if self.st_input_2.toPlainText():
                 run_flag_container[1] = True
-                __enable_run()
             else:
                 run_flag_container[1] = False
+            __enable_run()
+        def __file_term_switch():
+            if self.ft_dropdown_input_2.currentText() != 'None':
+                run_flag_container[6] = True
+                self.open_results_button_2.setEnabled(True)
 
+            else:
+                run_flag_container[6] = False
+                self.open_results_button_2.setEnabled(False)
+            __enable_run()
         def __find_amt_switch():
             amt = self.no_jobs_input_2.toPlainText()
             try:
@@ -1157,11 +1175,6 @@ class Ui_MainWindow(object):
             location = self.location_input_2.toPlainText()
             jobs_to_find = int(self.no_jobs_input_2.toPlainText())
 
-            # if no file term is given, set to search term
-            if file_term == 'None':
-                file_term = search_term
-                self.__update_file_terms(file_term)
-
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
                 username = self.lk_username_in_2.toPlainText()
                 if self.lk_checkbox_2.isChecked():
@@ -1198,7 +1211,9 @@ class Ui_MainWindow(object):
 
         # TODO - link with results dipslay
         def __show_results():
-            pass
+            resultwindow = QtWidgets.QMainWindow()
+            result_ui = ResultsWindow(resultwindow, self.ft_dropdown_input_2.currentText())
+            resultwindow.show()
 
         self.SearchClassify = QtWidgets.QWidget()
         self.SearchClassify.setObjectName("SearchClassify")
@@ -1252,6 +1267,7 @@ class Ui_MainWindow(object):
             self.clf_auto_checkbox2.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(50*SCALE_FACTOR), int(191*SCALE_FACTOR), int(31*SCALE_FACTOR)))
             self.clf_auto_checkbox2.setChecked(True)
             self.clf_auto_checkbox2.setObjectName("clf_auto_checkbox2")
+
 
         #linkden info elements
         if True:
@@ -1355,7 +1371,7 @@ class Ui_MainWindow(object):
             #self.ft_dropdown_input_2.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
             self.file_term_dropdown(self.ft_dropdown_input_2)
             self.ft_dropdown_input_2.setObjectName("ft_dropdown_input_2")
-
+            self.ft_dropdown_input_2.activated.connect(__file_term_switch)
         # search term elements
         if True:
             self.st_container_2 = QtWidgets.QGroupBox(self.sc_field_container)
@@ -1391,6 +1407,7 @@ class Ui_MainWindow(object):
             self.open_results_button_2.setObjectName("open_results_button_2")
 
             self.open_results_button_2.clicked.connect(__show_results)
+            self.open_results_button_2.setEnabled(False)
         # job search no elements
         if True:
             self.verticalLayout_51.addWidget(self.open_results_button_2)
@@ -1625,8 +1642,7 @@ class Ui_MainWindow(object):
 
 if __name__ == "__main__":
     import sys
-    import nltk
-    nltk.download('wordnet')
+
     PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()

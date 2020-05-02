@@ -10,24 +10,36 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import sqlite3,os
 
-class Ui_MainWindow(object):
+class TrainSelectWindow(object):
 
-    def __init__(self,file_term):
+    def __init__(self,window_obj,file_term):
+        self.MainWindow = window_obj
         self.file_term = file_term
         self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
         self.current_uid = None
         self.current_job = None
         self.current_text = None
+
+        self.setupUi()
         with self.database:
             cur = self.database.cursor()
             self.unsorted_jobs = cur.execute("SELECT * from unsorted").fetchall()
             self.unsorted_jobs.append(None)
+
+
+        if self.unsorted_jobs[0] is not None:
+            self.__get_next_job()
+        else:
+            self.__no_unsorted_jobs_handler()
+
     def __get_next_job(self):
         nextuns = self.unsorted_jobs.pop()
         if nextuns is not None:
+
             self.unique_id,self.current_job,self.current_text = nextuns
+            self.job_desc_text.setText(self.current_text)
         else:
-            MainWindow.close()
+            self.MainWindow.close()
 
     def __button_click_response_handler(self,button):
         response = button.text()+" Jobs"
@@ -37,7 +49,17 @@ class Ui_MainWindow(object):
             cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(self.unique_id,))
         self.__get_next_job()
 
-
+    def __no_unsorted_jobs_handler(self):
+        if self.current_uid == None:
+            self.ideal_button.setEnabled(False)
+            self.good_button.setEnabled(False)
+            self.neutral_button.setEnabled(False)
+            self.bad_button.setEnabled(False)
+            self.ignore_button.setEnabled(False)
+            self.next_button.setEnabled(False)
+            self.catagory_container.setEnabled(False)
+            self.job_desc_text.setText("No unsorted jobs found. To get new jobs, go to the Search tab and run a search"
+                                       "for the job type you want to create training models for.")
     def __setup_options_container(self):
         self.options_container = QtWidgets.QGroupBox(self.hold_frame)
         self.options_container.setGeometry(QtCore.QRect(770, 640, 121, 141))
@@ -82,11 +104,13 @@ class Ui_MainWindow(object):
     def __setup_label_container(self):
         self.catagory_container = QtWidgets.QGroupBox(self.groupBox)
         self.catagory_container.setGeometry(QtCore.QRect(760, 10, 121, 321))
+
         font = QtGui.QFont()
         font.setPointSize(12)
         self.catagory_container.setFont(font)
         self.catagory_container.setAutoFillBackground(True)
-        self.catagory_container.setStyleSheet("_QGroupBox{background-color : rgb(255, 255, 255);}")
+        self.catagory_container.setStyleSheet("_QGroupBox :enabled {background-color : rgb(255, 255, 255);} :disbaled {color : Grey;background-color : Grey;}")
+        self.catagory_container.setAutoFillBackground(True)
         self.catagory_container.setAlignment(QtCore.Qt.AlignCenter)
         self.catagory_container.setObjectName("catagory_container")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.catagory_container)
@@ -101,7 +125,8 @@ class Ui_MainWindow(object):
         self.ideal_button.setFont(font)
         self.ideal_button.setAutoFillBackground(False)
         self.ideal_button.setStyleSheet(
-            "QPushButton {font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Yellow;font-weight: bold;}\n"
+            "QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Yellow;font-weight: bold;} "
+            ":disabled {color: Yellow;font-weight: normal;}" 
             "")
         self.ideal_button.setFlat(False)
         self.ideal_button.setObjectName("ideal_button")
@@ -110,14 +135,17 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.ideal_button)
         self.good_button = QtWidgets.QPushButton(self.catagory_container)
         self.good_button.setStyleSheet(
-            "QPushButton {font: 75 12pt \"MS Shell Dlg 2\"; font-weight: bold;color: Green;}\n"
+            "QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Green;font-weight: bold;} "
+            ":disabled {color: Green;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
             "")
         self.good_button.setObjectName("good_button")
 
 
         self.verticalLayout.addWidget(self.good_button)
         self.neutral_button = QtWidgets.QPushButton(self.catagory_container)
-        self.neutral_button.setStyleSheet("font: 12pt \"MS Shell Dlg 2\";font-weight: bold;color:Black;")
+        self.neutral_button.setStyleSheet("QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Black;font-weight: bold;} "
+            ":disabled {color: Black;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
+            "")
         self.neutral_button.setObjectName("neutral_button")
         self.verticalLayout.addWidget(self.neutral_button)
         self.bad_button = QtWidgets.QPushButton(self.catagory_container)
@@ -131,7 +159,9 @@ class Ui_MainWindow(object):
         font.setWeight(75)
         self.bad_button.setFont(font)
         self.bad_button.setAutoFillBackground(False)
-        self.bad_button.setStyleSheet("QPushButton {font: 12pt \"MS Shell Dlg 2\"; color: Red;font-weight: bold;}\\n")
+        self.bad_button.setStyleSheet("QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Red;font-weight: bold;} "
+            ":disabled {color: Red;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
+            "")
         self.bad_button.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.Switzerland))
         self.bad_button.setObjectName("bad_button")
         self.verticalLayout.addWidget(self.bad_button)
@@ -151,8 +181,8 @@ class Ui_MainWindow(object):
                                         self.__button_click_response_handler(self.good_button))
         self.ignore_button.clicked.connect(lambda b=self.ignore_button :
                                         self.__button_click_response_handler(self.ignore_button))
-    def setupUi(self,MainWindow):
-        self.MainWindow = MainWindow
+    def setupUi(self):
+        MainWindow = self.MainWindow
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(931, 822)
         font = QtGui.QFont()
@@ -263,8 +293,5 @@ class Ui_MainWindow(object):
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow('Chemical Engineer')
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+
+

@@ -12,6 +12,9 @@ def file_setup(file_term):
         os.mkdir(os.path.join(os.getcwd(), 'webdrivers'))
     except FileExistsError:
         pass
+    else:
+        os.mkdir(os.path.join(os.getcwd(),'webdrivers','chromedriver'))
+        os.mkdir(os.path.join(os.getcwd(),'webdrivers','geckodriver'))
 
     try:
         os.mkdir(os.path.join(os.getcwd(), 'user_information'))
