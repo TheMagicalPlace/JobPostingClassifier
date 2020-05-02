@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split
 from sklearn_extensions.benchmarks import *
 from sklearn_extensions.NLTKUtils import *
-from sklearn_extensions.featurization import *
+
 from sklearn_extensions.extended_pipeline import PipelineComponents
 from joblib import load
 import sqlite3

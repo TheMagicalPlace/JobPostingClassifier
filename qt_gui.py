@@ -22,6 +22,7 @@ class Ui_MainWindow(object):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
             setdict = defaultdict(list, settings)
+            setdict = defaultdict(list, settings)
 
             if file_term not in setdict['file_terms']:
                 setdict['file_terms'].append(file_term)
@@ -31,6 +32,7 @@ class Ui_MainWindow(object):
         return file_terms
 
     def __get_file_terms(self):
+
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
             terms = defaultdict(list,json.loads(data.read()))
         if not terms['None']:
@@ -1623,7 +1625,8 @@ class Ui_MainWindow(object):
 
 if __name__ == "__main__":
     import sys
-
+    import nltk
+    nltk.download('wordnet')
     PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()

@@ -1,6 +1,6 @@
 import os
 
-import sqlite3
+import sqlite3,json
 
 def file_setup(file_term):
     """Sets up the file structure used by the program for each search term"""
@@ -8,7 +8,18 @@ def file_setup(file_term):
         os.mkdir(os.path.join(os.getcwd(),file_term))
     except FileExistsError:
         pass
+    try:
+        os.mkdir(os.path.join(os.getcwd(), 'webdrivers'))
+    except FileExistsError:
+        pass
 
+    try:
+        os.mkdir(os.path.join(os.getcwd(), 'user_information'))
+    except FileExistsError:
+        pass
+    else:
+        with open(os.path.join(os.getcwd(), 'user_information','settings.json'),'w') as st:
+            st.write(json.dumps({}))
     try:
         open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'))
     except FileNotFoundError:

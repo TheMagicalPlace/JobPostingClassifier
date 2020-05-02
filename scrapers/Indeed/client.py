@@ -44,7 +44,7 @@ class IndeedClient:
         """launches the webdriver & navigated to indeed homepage"""
 
         # TODO generalize webdriver path
-        self.driver = webdriver.Chrome('/home/themagicalplace/Documents/chromedriver')
+        self.driver = webdriver.Chrome(os.path.join(os.getcwd(),'drivers','chromedriver'))
         self.scraper =scrapers._ScraperIndeed(self.driver,
                                               database=self.database,
                                               search_term=self.search_term,

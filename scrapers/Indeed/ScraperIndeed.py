@@ -3,7 +3,7 @@ from collections import defaultdict
 import json
 import logging
 
-from xvfbwrapper import Xvfb
+#from xvfbwrappxer import Xvfb
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
