@@ -203,7 +203,7 @@ class BenchmarkSuite():
                     print("confusion matrix:")
                     print(metrics.confusion_matrix(y_test, pred))
 
-            clf_descr = str(clf).split('(')[0]
+        clf_descr = str(clf).split('(')[0]
         return clf_descr, accuracy, train_time, test_time
 
     def show_results(self,plot=True,silent=False):
