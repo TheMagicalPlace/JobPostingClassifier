@@ -10,16 +10,42 @@ import PyQt5
 import os,json
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QColorDialog
+from PyQt5.QtCore import pyqtSlot,pyqtSignal
 from scrapers import IndeedClient,LinkdinClient
-from NBJobClassifier import ClassificationInterface
+from NBJobClassifier import ClassificationInterface,QWorkerCompatibleClassificationInterface
 import sqlite3
 from collections import defaultdict
 from webdriver_handlers import DriverManagerChrome,DriverManagerFirefox
 from train_select import *
 from result_navigator import ResultsWindow
-SCALE_FACTOR = 1.2
-class Ui_MainWindow(object):
 
+SCALE_FACTOR = 1.2
+
+
+class WorkerSignals(QtCore.QObject):
+
+    finished = pyqtSignal()
+
+class WorkerGeneric(QtCore.QRunnable):
+
+    def __init__(self,method,*args,**kwargs):
+        super().__init__()
+        self.method = method
+        self.args =args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        self.method(*self.args,**self.kwargs)
+        self.signals.finished.emit()
+
+
+
+
+class SJCGuiMain(object):
+    def __init__(self):
+        self.ThreadPool = QtCore.QThreadPool()
     def __update_file_terms(self,file_term):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
@@ -31,6 +57,16 @@ class Ui_MainWindow(object):
             data.seek(0)
             data.write(json.dumps(dict(setdict)))
         return file_terms
+
+    def __toggle_other_tabs(self,state : bool,ignore=()):
+        self.Classify.setEnabled(state)
+        self.Search.setEnabled(state)
+        self.SearchClassify.setEnabled(state)
+        self.Train.setEnabled(state)
+        self.Classify.setEnabled(state)
+        for enabled in ignore:
+            enabled.setEnabled(True)
+
 
     def __get_file_terms(self):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
@@ -48,11 +84,18 @@ class Ui_MainWindow(object):
 
         # TODO add exception catching for invalid os or timeout
         def __download_chromedriver():
+            self.dl_1_button.setEnabled(False)
             manager= DriverManagerChrome()
-            manager.download_drivers()
+            worker = WorkerGeneric(manager.download_drivers)
+            worker.signals.finished.connect(lambda : self.dl_1_button.setEnabled(True))
+            self.ThreadPool.start(worker)
         def download_geckodriver():
+            self.dl_2_button.setEnabled(False)
             manager = DriverManagerFirefox()
-            manager.download_drivers()
+            worker = WorkerGeneric(manager.download_drivers)
+            worker.signals.finished.connect(lambda : self.dl_2_button.setEnabled(True))
+            self.ThreadPool.start(worker)
+
         def __send_usage_info():
             pass
         def __report_issue():
@@ -602,14 +645,14 @@ class Ui_MainWindow(object):
             file_term = self.ft_input.currentText()
             location = self.location_input.toPlainText()
             jobs_to_find = int(self.no_jobs_input.toPlainText())
-
+            self.__toggle_other_tabs(False,[self.Search,])
             # if no file term is given, set to search term
             if file_term == 'None':
                 file_term = search_term
                 self.__update_file_terms(file_term)
 
             terms = self.__get_file_terms()
-
+            self.search_button.setEnabled(False)
 
             if self.jb_dropdown.currentText() == 'LinkedIn':
                 username = self.lk_username_in.toPlainText()
@@ -621,15 +664,17 @@ class Ui_MainWindow(object):
                                       file_term=file_term,
                                       location=location,
                                       jobs_to_find=jobs_to_find)
-                client(username,self.lk_password_in.toPlainText())
+                worker = WorkerGeneric(client,[username,self.lk_password_in.toPlainText()])
+                self.ThreadPool.start(worker)
             elif self.jb_dropdown.currentText() == 'Indeed':
                 client = IndeedClient(search_term=search_term,
                                       file_term=file_term,
                                       location=location,
                                       jobs_to_find=jobs_to_find)
-                client()
-                # TODO hook up indeed scraper
-
+                worker = WorkerGeneric(client)
+                self.ThreadPool.start(worker)
+            worker.signals.finished.connect(lambda : self.search_button.setEnabled(True))
+            worker.signals.finished.connect(lambda :  self.__toggle_other_tabs(True))
 
         self.Search = QtWidgets.QWidget()
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -833,16 +878,27 @@ class Ui_MainWindow(object):
             else:
                 self.activate_classifier_button.setEnabled(False)
                 self.open_results_button.setEnabled(False)
+
         # TODO - hook in classifier and check pertinent conditions
         def __run_classifier():
+            self.__toggle_other_tabs(False,self.Classify)
+            self.activate_classifier_button.setEnabled(False)
+            self.open_results_button.setEnabled(False)
             file_term = self.clf_term_input.currentText()
-            clfI = ClassificationInterface(file_term,1,mode='live',no_labels=2)
-            clfI.classify_live_jobs()
+            clfI = QWorkerCompatibleClassificationInterface(file_term,1,mode='live',no_labels=2)
+            self.ThreadPool.start(clfI)
+            clfI.signals.finished.connect(lambda: self.search_button.setEnabled(True))
+            clfI.signals.finished.connect(lambda: self.__toggle_other_tabs(True))
+            clfI.signals.finished.connect(lambda: self.open_results_button(True))
 
         def __show_results():
-            resultwindow = QtWidgets.QMainWindow()
-            result_ui = ResultsWindow(resultwindow,self.clf_term_input.currentText())
-            resultwindow.show()
+            if self.clf_term_input.currentText() !='None':
+                self.open_results_button.setEnabled(True)
+                resultwindow = QtWidgets.QMainWindow()
+                result_ui = ResultsWindow(resultwindow,self.clf_term_input.currentText())
+                resultwindow.show()
+            else:
+                self.clf_term_input.setEnabled(False)
 
         self.Classify = QtWidgets.QWidget()
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
@@ -987,17 +1043,33 @@ class Ui_MainWindow(object):
             self.train_button.setEnabled(False)
 
         def __sort_train_button():
+            if self.train_term_input.currentText() != 'None':
+                self.train_term_input.setEnabled(True)
+                sortwindow = QtWidgets.QMainWindow()
+                ui = TrainSelectWindow(sortwindow,self.train_term_input.currentText())
+                sortwindow.show()
+            else:
+                self.train_term_input.setEnabled(False)
 
-            sortwindow = QtWidgets.QMainWindow()
-            ui = TrainSelectWindow(sortwindow,self.train_term_input.currentText())
-
-            sortwindow.show()
 
         def __run_training():
+            self.train_button.setEnabled(False)
+            self.__toggle_other_tabs(False,self.Train)
             file_term = self.train_term_input.currentText()
             iterations = int(self.iter_input.toPlainText())
-            handler = ClassificationInterface(file_term=file_term,iterations=iterations,no_labels=2)
-            handler.train_models(silent=True,plot=False)
+            handler = QWorkerCompatibleClassificationInterface(file_term=file_term,
+                                                               iterations=iterations,
+                                                               no_labels=2,
+                                                               mode='train')
+
+            def test(val):
+                print(val)
+            handler.signals.progress.connect(lambda val : self.train_progress.setValue(val))
+            handler.signals.progress.connect(test)
+            handler.signals.finished.connect(lambda : self.__toggle_other_tabs(True))
+            handler.signals.finished.connect(lambda : self.train_button.setEnabled(True))
+            self.ThreadPool.start(handler)
+
             # TODO hook up with training module + add condition for insufficient training data
 
         self.Train = QtWidgets.QWidget()
@@ -1034,13 +1106,14 @@ class Ui_MainWindow(object):
             self.manual_sort_button.setObjectName("manual_sort_button")
             self.train_term_input.activated.connect(__toggle_train_button)
             self.manual_sort_button.clicked.connect(__sort_train_button)
+            self.manual_sort_button.setEnabled(False)
 
         #progress bar
         if True:
             self.train_progress = QtWidgets.QProgressBar(self.train_container)
             self.train_progress.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(320*SCALE_FACTOR), int(851*SCALE_FACTOR), int(23*SCALE_FACTOR)))
             self.train_progress.setMaximum(100)
-            self.train_progress.setProperty("value", 69)
+            self.train_progress.setProperty("value", 0)
             self.train_progress.setOrientation(QtCore.Qt.Horizontal)
             self.train_progress.setObjectName("train_progress")
 
@@ -1169,7 +1242,20 @@ class Ui_MainWindow(object):
 
         # TODO hook in classify elements
         def __run_combined():
+
+            def reactivate():
+                self.run_button.setEnabled(True)
+                self.ft_dropdown_input_2.setEnabled(True)
+                self.__toggle_other_tabs(True)
+                self.open_results_button_2.setEnabled(True)
+
             """ run a job search followed by classification"""
+
+            self.run_button.setEnabled(False)
+            self.ft_dropdown_input_2.setEnabled(False)
+            self.__toggle_other_tabs(False,self.SearchClassify)
+            self.open_results_button_2.setEnabled(False)
+
             search_term = self.st_input_2.toPlainText()
             file_term = self.ft_dropdown_input_2.currentText()
             location = self.location_input_2.toPlainText()
@@ -1184,17 +1270,20 @@ class Ui_MainWindow(object):
                                       file_term=file_term,
                                       location=location,
                                       jobs_to_find=jobs_to_find)
-                client(username, self.lk_password_in_2.toPlainText())
+                worker = WorkerGeneric(client, [username, self.lk_password_in.toPlainText()])
+                self.ThreadPool.start(worker)
 
             elif self.jb_dropdown_2.currentText() == 'Indeed':
                 client = IndeedClient(search_term=search_term,
                                       file_term=file_term,
                                       location=location,
                                       jobs_to_find=jobs_to_find)
-                client()
+                worker = WorkerGeneric(client)
+                self.ThreadPool.start(worker)
 
-            clfI = ClassificationInterface(file_term,1,mode='live',no_labels=2)
-            clfI.classify_live_jobs()
+            clfI = QWorkerCompatibleClassificationInterface(file_term,1,mode='live',no_labels=2)
+            worker.signals.finished.connect(lambda  : clfI.classify_live_jobs())
+            clfI.signals.finished.connect (lambda  : reactivate())
 
 
         def __clinkedin_forms_toggle():
@@ -1646,7 +1735,7 @@ if __name__ == "__main__":
     PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
+    ui = SJCGuiMain()
     ui.setupUi(MainWindow)
     MainWindow.show()
     sys.exit(app.exec_())

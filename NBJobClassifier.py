@@ -7,6 +7,8 @@ from joblib import load
 import sqlite3
 import pandas as pd
 from abc import ABC,abstractmethod
+from itertools import product
+from PyQt5.QtCore import pyqtSlot,pyqtSignal,QRunnable,QObject
 
 class Error(Exception):
     pass
@@ -41,7 +43,6 @@ class TextClassificationABC(ABC):
     @abstractmethod
     def classify_results(self,*args,**kwargs):
         pass
-
 
 class ClassificationHandler(TextClassificationABC):
     """ Handler class for the classification job descriptions.
@@ -119,8 +120,6 @@ class ClassificationHandler(TextClassificationABC):
             self.dataset['label'][iter] = self.job_label_associations[row[0]]
             self.dataset['description'][iter] = stemmer(row[1])
 
-
-
 class ClassificationInterface():
 
     def __init__(self,file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal'):
@@ -131,9 +130,17 @@ class ClassificationInterface():
         self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
         self.tuning_frequency = tuning_frequency
 
+
+    def qt_progress_signal_manager(self,vectorizer,transformer,stemmer,round,total_rounds):
+       """ Dummy method to be overwritten by QT (or other threading interface) enabled child classes"""
+       pass
+
     def train_models(self,silent=True,plot=False,*exclude):
         if self.mode != 'train':
             raise ModeMismatch(ClassificationInterface.train_models.__name__,self.mode)
+        count = 0
+        combos = list(product(['count'],[None,'normal','max','tfidf'],['porter','snowball','lemma',None]))
+
         for vectorizer in ['count']:
             for transformer in [None,'normal','max','tfidf']:
                 for stemmer in ['porter','snowball','lemma',None]:
@@ -149,6 +156,8 @@ class ClassificationInterface():
                                                        transform=transformer)
                         bench = BenchmarkSuite(self.file_term, search,self.iterations)
                         bench.training_controller(silent=silent, plot=plot)
+                        count+=1
+                        self.qt_progress_signal_manager(vectorizer,transformer,stemmer,round=count,total_rounds=combos.__len__())
         else:
             if self.tuning_frequency == 'minimal':
                 self.mode = 'tune'
@@ -186,16 +195,50 @@ class ClassificationInterface():
                     if score >score_to_beat:
                         cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE unique_id = ?""",(score,unique_id))
 
+class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable):
+
+    class Signals(QObject):
+        progress = pyqtSignal(int)
+        params = pyqtSignal(tuple)
+        finished = pyqtSignal()
+
+    def __init__(self,file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal'):
+        QRunnable.__init__(self)
+        super().__init__(file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal')
+        self.signals = QWorkerCompatibleClassificationInterface.Signals()
+
+    @pyqtSlot()
+    def train_models(self,silent=True,plot=False,*exclude):
+        super().train_models(silent,plot,exclude)
+
+    @pyqtSlot()
+    def run(self):
+        self.database = sqlite3.connect(os.path.join(os.getcwd(), self.file_term, f'{self.file_term}.db'))
+        if self.mode =='train':
+            self.train_models()
+        elif self.mode == 'tune':
+            self.tune_models()
+        elif self.mode == 'live':
+            self.classify_live_jobs()
+        self.signals.finished.emit()
+
+    @pyqtSlot()
+    def qt_progress_signal_manager(self, vectorizer, transformer, stemmer, round, total_rounds):
+        """ Sends training status back to the GUI"""
+        self.signals.progress.emit(int(100*round/total_rounds))
+        self.signals.params.emit((stemmer,vectorizer,transformer))
+        pass
 
 if __name__ == '__main__':
     import multiprocessing as mp
     from tqdm import tqdm
 
-
-
-    clf = ClassificationInterface('Chemical Engineer',10,mode='tune')
-    clf.tune_models()
-
+    p = list(product(['count'], [None, 'normal', 'max', 'tfidf'], ['porter', 'snowball', 'lemma', None]))
+    #clf = ClassificationInterface('Chemical Engineer',10,mode='tune')
+    #clf.tune_models()
+    e = QWorkerCompatibleClassificationInterface('Chemical Engineer',100)
+    print(QWorkerCompatibleClassificationInterface.__mro__,QWorkerCompatibleClassificationInterface.__dict__)
+    print('s')
 
 
 
