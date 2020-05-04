@@ -31,10 +31,11 @@ class IndeedClient:
         self.jobs_to_find = jobs_to_find
         self.search_term = search_term
         self.file_term = file_term
-        self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
+
         self.scrape_continue = True
 
     def __call__(self):
+        self.database = sqlite3.connect(os.path.join(os.getcwd(), self.file_term, f'{self.file_term}.db'))
         self.driver_startup()
         self.navigate_to_jobs(self.search_term,self.location)
         self.navigate_through_pages()
@@ -45,6 +46,7 @@ class IndeedClient:
 
         # TODO generalize webdriver path
         self.driver = webdriver.Chrome(os.path.join(os.getcwd(),'drivers','chromedriver'))
+
         self.scraper =scrapers._ScraperIndeed(self.driver,
                                               database=self.database,
                                               search_term=self.search_term,

@@ -30,10 +30,10 @@ class ResultsWindow(object):
         with self.database:
             cur = self.database.cursor()
             self.results_jobs = cur.execute("""
-                SELECT results.unique_id,results.description,results.job_title,metadata.link,metadata.company,metadata.location 
+                SELECT results.current_unique_id,results.description,results.job_title,metadata.link,metadata.company,metadata.location 
                 FROM results 
                 INNER JOIN metadata 
-                ON results.unique_id = metadata.unique_id 
+                ON results.current_unique_id = metadata.current_unique_id 
                 WHERE results.label = 'Good Jobs' 
                 OR results.label = 'Ideal Jobs'""").fetchall()
             self.results_jobs.append(None)
@@ -60,7 +60,7 @@ class ResultsWindow(object):
         with self.database:
             cur = self.database.execute("INSERT INTO training VALUES(?,?,?,?)",
                                         (self.unique_id,response,self.current_job,self.current_text,))
-            cur.execute("DELETE FROM results WHERE unique_id = ?",(self.unique_id,))
+            cur.execute("DELETE FROM results WHERE current_unique_id = ?",(self.unique_id,))
         self.__get_next_result()
 
     def __no_results_jobs_handler(self):
@@ -372,7 +372,7 @@ class ResultsWindow(object):
         self.options_container.setFlat(True)
         self.options_container.setObjectName("options_container")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.options_container)
-        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.gridLayout_2.setObjectName("training_data_layout")
         self.exit_button = QtWidgets.QPushButton(self.options_container)
         self.exit_button.setStyleSheet("font: 12pt \"MS Shell Dlg 2\";color:Black;")
         self.exit_button.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))

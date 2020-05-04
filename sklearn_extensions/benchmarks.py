@@ -65,12 +65,12 @@ class BenchmarkSuite():
             cur = self.database.cursor()
             for model in active_models:
                 if self.tuning_depth == 'minimal':
-                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results")
+                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results")
                 elif self.tuning_depth == 'normal':
-                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
+                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results WHERE model = ?",
                                     (model,))
                 elif self.tuning_depth == 'maximal':
-                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
+                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results WHERE model = ?",
                                     (model,))
                     # TODO not implimented, same as normal
                 self.best_models[model] = list(a)[0][0]
@@ -102,7 +102,7 @@ class BenchmarkSuite():
                     self.best_score_ledger[model] = [0, 0]
                 except sqlite3.IntegrityError:
                     scores_to_beat = cur.execute("""SELECT f1_score,accuracy from model_performance_results
-                                                               WHERE unique_id = ? """,
+                                                               WHERE current_unique_id = ? """,
                                                               (self.uid_base+'_'+model,))
                     self.best_score_ledger[model] = [_ for _ in list(scores_to_beat)[0]]
 
@@ -121,7 +121,7 @@ class BenchmarkSuite():
             uid = self.uid_base + '_' + model
             with self.database:
                 cur = self.database.cursor()
-                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",
+                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE current_unique_id = ?",
                             (self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
         if plot==True:

@@ -102,7 +102,7 @@ class ClassificationHandler(TextClassificationABC):
                     live_text = data[1]+'\n'+data[2]
                     label = model.predict(live_text)
                     cur.execute("INSERT INTO results VALUES (?,?,?,?)",(data[0],label,data[1],data[2]))
-                    cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(data[0]))
+                    cur.execute("DELETE FROM unsorted WHERE current_unique_id = ?",(data[0]))
         except Exception as e:
             print(e)
 
@@ -170,7 +170,7 @@ class ClassificationInterface():
             raise ModeMismatch(ClassificationInterface.classify_live_jobs.__name__,self.mode)
         with self.database:
             cur = self.database.cursor()
-            model = cur.execute("""SELECT MAX(accuracy),unique_id from model_performance_results 
+            model = cur.execute("""SELECT MAX(accuracy),current_unique_id from model_performance_results 
                             WHERE classification_labels = ?""",(self.no_labels,))
             model_id = list(model)[1]
         model = load(os.path.join(os.getcwd(),self.file_term,'models',model_id))
@@ -183,7 +183,7 @@ class ClassificationInterface():
             raise ModeMismatch(ClassificationInterface.tune_models.__name__,self.mode)
         with self.database:
             cur = self.database.cursor()
-            for model in cur.execute("""SELECT MAX(accuracy),model,unique_id,stemmer from model_performance_results
+            for model in cur.execute("""SELECT MAX(accuracy),model,current_unique_id,stemmer from model_performance_results
                             WHERE classification_labels = ? GROUP BY model""",(self.no_labels,)):
                     score_to_beat,name,unique_id,stemmer = model
 
@@ -193,7 +193,7 @@ class ClassificationInterface():
                     bench = BenchmarkSuite(self.file_term, clf_handler,1)
                     clf,score = bench.hyperparameter_tuning(name,model)
                     if score >score_to_beat:
-                        cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE unique_id = ?""",(score,unique_id))
+                        cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE current_unique_id = ?""",(score,unique_id))
 
 class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable):
 

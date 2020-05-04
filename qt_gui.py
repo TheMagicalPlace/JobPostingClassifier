@@ -18,8 +18,11 @@ from collections import defaultdict
 from webdriver_handlers import DriverManagerChrome,DriverManagerFirefox
 from train_select import *
 from result_navigator import ResultsWindow
+import base64
 
-SCALE_FACTOR = 1.2
+SCALE_FACTOR = 1.5
+
+
 
 
 class WorkerSignals(QtCore.QObject):
@@ -46,6 +49,34 @@ class WorkerGeneric(QtCore.QRunnable):
 class SJCGuiMain(object):
     def __init__(self):
         self.ThreadPool = QtCore.QThreadPool()
+
+    def __save_linkedin_info(self,username='',password=''):
+        pword = base64.b64encode(password.encode('ascii'))
+
+        with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
+            settings = json.loads(data.read())
+            setdict = defaultdict(dict, settings)
+            setdict['lk_login_info'] = {'username':username,'password':pword}
+            data.seek(0)
+            data.write(json.dumps(dict(setdict)))
+
+    def __get_linkedin_info(self):
+        with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
+            settings = json.loads(data.read())
+            setdict = defaultdict(dict, settings)
+            lk_info = setdict['lk_login_info']
+            if lk_info and lk_info['username']:
+                self.lk_checkbox.setChecked(True)
+                self.lk_checkbox_2.setChecked(True)
+                self.lk_username_in_2.setText(lk_info['username'])
+                self.lk_password_in_2.setText(base64.b64decode(lk_info['password']).decode('ascii'))
+                self.lk_username_in.setText(lk_info['username'])
+                self.lk_password_in.setText(base64.b64decode(lk_info['password']).decode('ascii'))
+            else:
+                setdict['lk_login_info'] = {'username':'', 'password': ''}
+                data.seek(0)
+                data.write(json.dumps(dict(setdict)))
+
     def __update_file_terms(self,file_term):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
@@ -66,7 +97,6 @@ class SJCGuiMain(object):
         self.Classify.setEnabled(state)
         for enabled in ignore:
             enabled.setEnabled(True)
-
 
     def __get_file_terms(self):
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
@@ -658,8 +688,9 @@ class SJCGuiMain(object):
                 username = self.lk_username_in.toPlainText()
                 # TODO send password directly to scraper
                 if self.lk_checkbox.isChecked():
-                    pass
-                    # TODO setup secure saving of linkedin info
+                    self.__save_linkedin_info(username,self.lk_password_in.toPlainText())
+                else:
+                    self.__save_linkedin_info()
                 client= LinkdinClient(search_term=search_term,
                                       file_term=file_term,
                                       location=location,
@@ -733,6 +764,7 @@ class SJCGuiMain(object):
             self.file_term_dropdown(self.ft_input)
             self.ft_input.setObjectName("ft_input")
             self.verticalLayout_3.addWidget(self.ft_input)
+            self.ft_input.setMaximumHeight(31)
             self.location_container = QtWidgets.QGroupBox(self.search_cont)
             self.location_container.setGeometry(QtCore.QRect(int(630*SCALE_FACTOR), int(210*SCALE_FACTOR), int(221*SCALE_FACTOR), int(71*SCALE_FACTOR)))
             self.location_container.setObjectName("location_container")
@@ -963,11 +995,11 @@ class SJCGuiMain(object):
             self.clf_model_input.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
             self.clf_model_input.setAcceptRichText(True)
             self.clf_model_input.setObjectName("clf_model_input")
-            self.auto_checkbox = QtWidgets.QCheckBox(self.clf_use_container)
-            self.auto_checkbox.setEnabled(True)
-            self.auto_checkbox.setGeometry(QtCore.QRect(int(40*SCALE_FACTOR), int(50*SCALE_FACTOR), int(191*SCALE_FACTOR), int(31*SCALE_FACTOR)))
-            self.auto_checkbox.setChecked(True)
-            self.auto_checkbox.setObjectName("auto_checkbox")
+            self.clf_auto_checkbox = QtWidgets.QCheckBox(self.clf_use_container)
+            self.clf_auto_checkbox.setEnabled(True)
+            self.clf_auto_checkbox.setGeometry(QtCore.QRect(int(40 * SCALE_FACTOR), int(50 * SCALE_FACTOR), int(191 * SCALE_FACTOR), int(31 * SCALE_FACTOR)))
+            self.clf_auto_checkbox.setChecked(True)
+            self.clf_auto_checkbox.setObjectName("clf_auto_checkbox")
 
         # run button elements
         if True:
@@ -1002,8 +1034,47 @@ class SJCGuiMain(object):
             self.open_results_button.setEnabled(False)
         self.MainTab.addTab(self.Classify, "")
 
+
+
+
     def __setup_train_tab(self):
 
+        def get_train_amounts():
+            file_term = self.train_term_input.currentText()
+            if file_term != 'None':
+                with sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db')) as db:
+                    cur = db.cursor()
+                    results_jobs = cur.execute("""
+                        SELECT label,COUNT(label) 
+                        FROM training
+                        GROUP BY label
+                        """).fetchall()
+                if not results_jobs:
+                    for label_obj in self.__train_count_dict.values():
+                        label_obj.setHtml(
+                            f"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                            f"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                            "p, li { white-space: pre-wrap; }\n"
+                            f"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">"
+                            f"<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>")
+                    return
+                for label,amt in results_jobs:
+                    try:
+                        self.__train_count_dict[label].setHtml(f"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                              f"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                              "p, li { white-space: pre-wrap; }\n"
+                                             f"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">"
+                                              f"<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">{str(amt)}</p></body></html>")
+
+                    except KeyError:
+                        continue
+            else:
+                for label_obj in self.__train_count_dict.values():
+                    label_obj.setHtml(f"<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                              f"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                              "p, li { white-space: pre-wrap; }\n"
+                                             f"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">"
+                                              f"<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>")
 
         def __get_train_data(database):
             job_data = {}
@@ -1013,6 +1084,7 @@ class SJCGuiMain(object):
 
                 for lab in ['Good Jobs','Bad Jobs','Neutral Jobs', "Ideal Jobs"]:
                     job_data[lab] = cur.execute("SELECT COUNT(unique_id) from training WHERE label = ?",(lab,)).fetchall()
+            get_train_amounts()
             return job_data
 
         def __toggle_train_button():
@@ -1035,10 +1107,6 @@ class SJCGuiMain(object):
                             return
                         else:
                             self.train_button.setEnabled(False)
-
-
-
-
             # disables if any conditions fail
             self.train_button.setEnabled(False)
 
@@ -1050,6 +1118,24 @@ class SJCGuiMain(object):
                 sortwindow.show()
             else:
                 self.train_term_input.setEnabled(False)
+
+        def __enable_sort_button():
+            file_term = self.train_term_input.currentText()
+            if file_term != 'None':
+                with sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db')) as db:
+                    cur = db.cursor()
+                    results_jobs = cur.execute("""
+                        SELECT COUNT(unique_id) 
+                        FROM unsorted
+                        """).fetchall()
+                no_unsorted = results_jobs[0][0]
+                if no_unsorted:
+                    self.manual_sort_button.setEnabled(True)
+                else:
+                    self.manual_sort_button.setEnabled(False)
+            else:
+                self.manual_sort_button.setEnabled(False)
+
 
 
         def __run_training():
@@ -1081,9 +1167,13 @@ class SJCGuiMain(object):
 
         # train / file term elements and sort button elements
         if True:
+
             self.train_term_container = QtWidgets.QGroupBox(self.train_container)
-            self.train_term_container.setGeometry(QtCore.QRect(int(360*SCALE_FACTOR), int(10*SCALE_FACTOR), int(221*SCALE_FACTOR), int(141*SCALE_FACTOR)))
+            self.train_term_container.setGeometry(QtCore.QRect(int(360*SCALE_FACTOR), int(10*SCALE_FACTOR), int(221*SCALE_FACTOR), int(131*SCALE_FACTOR)))
             self.train_term_container.setObjectName("train_term_container")
+            self.train_input_layout = QtWidgets.QGridLayout(self.train_term_container)
+
+            self.train_input_layout.setObjectName("train_input_layout")
             self.train_term_label = QtWidgets.QLabel(self.train_term_container)
             self.train_term_label.setGeometry(QtCore.QRect(int(30*SCALE_FACTOR), int(10*SCALE_FACTOR), int(155*SCALE_FACTOR), int(23*SCALE_FACTOR)))
             font = QtGui.QFont()
@@ -1092,26 +1182,102 @@ class SJCGuiMain(object):
             self.train_term_label.setAlignment(QtCore.Qt.AlignCenter)
             self.train_term_label.setObjectName("train_term_label")
             self.train_term_input = QtWidgets.QComboBox(self.train_term_container)
-            self.train_term_input.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(39*SCALE_FACTOR), int(201*SCALE_FACTOR), int(31*SCALE_FACTOR)))
+            self.train_term_input.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(49*SCALE_FACTOR), int(201*SCALE_FACTOR), int(31)))
             self.train_term_input.setLayoutDirection(QtCore.Qt.LeftToRight)
 
             self.train_term_input.setObjectName("train_term_input")
+            self.train_term_input.setMaximumSize(QtCore.QSize(201*SCALE_FACTOR, 31*SCALE_FACTOR))
             self.file_term_dropdown(self.train_term_input)
             # open sorting button
             self.manual_sort_button = QtWidgets.QPushButton(self.train_term_container)
-            self.manual_sort_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(82*SCALE_FACTOR), int(201*SCALE_FACTOR), int(51*SCALE_FACTOR)))
+            self.manual_sort_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(82*SCALE_FACTOR), int(201*SCALE_FACTOR), int(41*SCALE_FACTOR)))
             font = QtGui.QFont()
             font.setPointSize(15)
             self.manual_sort_button.setFont(font)
             self.manual_sort_button.setObjectName("manual_sort_button")
             self.train_term_input.activated.connect(__toggle_train_button)
             self.manual_sort_button.clicked.connect(__sort_train_button)
+            self.train_term_input.activated.connect(get_train_amounts)
+            self.train_term_input.activated.connect(__enable_sort_button)
             self.manual_sort_button.setEnabled(False)
+
+            #self.train_input_layout.addWidget(self.train_term_label, 0, 0, 1, 1)
+            #self.train_input_layout.addWidget(self.train_term_input, 2, 0, 1, 1)
+            #self.train_input_layout.addWidget(self.manual_sort_button, 3, 0, 3, 1)
+        # training data amounts buttons
+        if True:
+            self.training_amts_container = QtWidgets.QGroupBox(self.train_container)
+            self.training_amts_container.setGeometry(QtCore.QRect(360*SCALE_FACTOR, 150*SCALE_FACTOR, 501*SCALE_FACTOR, 81*SCALE_FACTOR))
+            font = QtGui.QFont()
+            font.setPointSize(9)
+            self.training_amts_container.setFont(font)
+            self.training_amts_container.setObjectName("training_amts_container")
+            self.training_data_layout = QtWidgets.QGridLayout(self.training_amts_container)
+            self.training_data_layout.setObjectName("training_data_layout")
+            self.good_amt_label = QtWidgets.QLabel(self.training_amts_container)
+            font = QtGui.QFont()
+            font.setPointSize(14)
+            self.good_amt_label.setFont(font)
+            self.good_amt_label.setTextFormat(QtCore.Qt.RichText)
+            self.good_amt_label.setAlignment(QtCore.Qt.AlignCenter)
+            self.good_amt_label.setObjectName("good_amt_label")
+            self.training_data_layout.addWidget(self.good_amt_label, 0, 1, 1, 1)
+            self.ideal_amt_label = QtWidgets.QLabel(self.training_amts_container)
+            font = QtGui.QFont()
+            font.setPointSize(14)
+            self.ideal_amt_label.setFont(font)
+            self.ideal_amt_label.setTextFormat(QtCore.Qt.RichText)
+            self.ideal_amt_label.setAlignment(QtCore.Qt.AlignCenter)
+            self.ideal_amt_label.setObjectName("ideal_amt_label")
+            self.training_data_layout.addWidget(self.ideal_amt_label, 0, 0, 1, 1)
+            self.ideal_amt_box = QtWidgets.QTextBrowser(self.training_amts_container)
+            self.ideal_amt_box.setMaximumSize(QtCore.QSize(71*SCALE_FACTOR, 21*SCALE_FACTOR))
+            font = QtGui.QFont()
+            font.setPointSize(8)
+            self.ideal_amt_box.setFont(font)
+            self.ideal_amt_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.ideal_amt_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.ideal_amt_box.setObjectName("ideal_amt_box")
+            self.training_data_layout.addWidget(self.ideal_amt_box, 1, 0, 1, 1)
+            self.good_amt_box = QtWidgets.QTextBrowser(self.training_amts_container)
+            self.good_amt_box.setMaximumSize(QtCore.QSize(71*SCALE_FACTOR, 21*SCALE_FACTOR))
+            self.good_amt_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.good_amt_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.good_amt_box.setObjectName("good_amt_box")
+            self.training_data_layout.addWidget(self.good_amt_box, 1, 1, 1, 1)
+            self.neutral_amt_box = QtWidgets.QTextBrowser(self.training_amts_container)
+            self.neutral_amt_box.setMaximumSize(QtCore.QSize(71*SCALE_FACTOR, 21*SCALE_FACTOR))
+            self.neutral_amt_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.neutral_amt_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.neutral_amt_box.setObjectName("neutral_amt_box")
+            self.training_data_layout.addWidget(self.neutral_amt_box, 1, 2, 1, 1)
+            self.bad_amt_box = QtWidgets.QTextBrowser(self.training_amts_container)
+            self.bad_amt_box.setMaximumSize(QtCore.QSize(71*SCALE_FACTOR, 21*SCALE_FACTOR))
+            self.bad_amt_box.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.bad_amt_box.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            self.bad_amt_box.setObjectName("bad_amt_box")
+            self.training_data_layout.addWidget(self.bad_amt_box, 1, 3, 1, 1)
+            self.neutral_amt_label = QtWidgets.QLabel(self.training_amts_container)
+            font = QtGui.QFont()
+            font.setPointSize(14)
+            self.neutral_amt_label.setFont(font)
+            self.neutral_amt_label.setTextFormat(QtCore.Qt.RichText)
+            self.neutral_amt_label.setAlignment(QtCore.Qt.AlignCenter)
+            self.neutral_amt_label.setObjectName("neutral_amt_label")
+            self.training_data_layout.addWidget(self.neutral_amt_label, 0, 2, 1, 1)
+            self.bad_amt_label = QtWidgets.QLabel(self.training_amts_container)
+            font = QtGui.QFont()
+            font.setPointSize(14)
+            self.bad_amt_label.setFont(font)
+            self.bad_amt_label.setTextFormat(QtCore.Qt.RichText)
+            self.bad_amt_label.setAlignment(QtCore.Qt.AlignCenter)
+            self.bad_amt_label.setObjectName("bad_amt_label")
+            self.training_data_layout.addWidget(self.bad_amt_label, 0, 3, 1, 1)
 
         #progress bar
         if True:
             self.train_progress = QtWidgets.QProgressBar(self.train_container)
-            self.train_progress.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(320*SCALE_FACTOR), int(851*SCALE_FACTOR), int(23*SCALE_FACTOR)))
+            self.train_progress.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(323*SCALE_FACTOR), int(851*SCALE_FACTOR), int(20*SCALE_FACTOR)))
             self.train_progress.setMaximum(100)
             self.train_progress.setProperty("value", 0)
             self.train_progress.setOrientation(QtCore.Qt.Horizontal)
@@ -1120,7 +1286,7 @@ class SJCGuiMain(object):
         # iteration form elements
         if True:
             self.iter_per_round = QtWidgets.QGroupBox(self.train_container)
-            self.iter_per_round.setGeometry(QtCore.QRect(int(590*SCALE_FACTOR), int(10*SCALE_FACTOR), int(271*SCALE_FACTOR), int(141*SCALE_FACTOR)))
+            self.iter_per_round.setGeometry(QtCore.QRect(int(590*SCALE_FACTOR), int(10*SCALE_FACTOR), int(271*SCALE_FACTOR), int(131*SCALE_FACTOR)))
             self.iter_per_round.setObjectName("iter_per_round")
             self.iter_per_round_label = QtWidgets.QLabel(self.iter_per_round)
             self.iter_per_round_label.setGeometry(QtCore.QRect(int(40*SCALE_FACTOR), int(10*SCALE_FACTOR), int(211*SCALE_FACTOR), int(23*SCALE_FACTOR)))
@@ -1150,26 +1316,38 @@ class SJCGuiMain(object):
             self.iter_input.textChanged.connect(__toggle_train_button)
         # Train button and advanced option buttons elements
         if True:
+            self.train_buttons_container = QtWidgets.QGroupBox(self.train_container)
+            self.train_buttons_container.setGeometry(QtCore.QRect(360*SCALE_FACTOR, 240*SCALE_FACTOR, 501*SCALE_FACTOR, 71*SCALE_FACTOR))
+            self.gridLayout_3 = QtWidgets.QGridLayout(self.train_buttons_container)
+
             self.train_info = QtWidgets.QTextBrowser(self.train_container)
             self.train_info.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(341*SCALE_FACTOR), int(301*SCALE_FACTOR)))
             self.train_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
             self.train_info.setObjectName("train_info")
             self.train_confandrun_buttons_container = QtWidgets.QGroupBox(self.train_container)
-            self.train_confandrun_buttons_container.setGeometry(QtCore.QRect(int(360*SCALE_FACTOR), int(160*SCALE_FACTOR), int(501*SCALE_FACTOR), int(71*SCALE_FACTOR)))
+            #self.train_confandrun_buttons_container.setGeometry(QtCore.QRect(int(360*SCALE_FACTOR), int(160*SCALE_FACTOR), int(501*SCALE_FACTOR), int(71*SCALE_FACTOR)))
             self.train_confandrun_buttons_container.setObjectName("frame")
             self.select_processing_options_button = QtWidgets.QPushButton(self.train_confandrun_buttons_container)
-            self.select_processing_options_button.setGeometry(QtCore.QRect(int(230*SCALE_FACTOR), int(40*SCALE_FACTOR), int(261*SCALE_FACTOR), int(21*SCALE_FACTOR)))
+            #self.select_processing_options_button.setGeometry(QtCore.QRect(int(230*SCALE_FACTOR), int(40*SCALE_FACTOR), int(261*SCALE_FACTOR), int(21*SCALE_FACTOR)))
             self.select_processing_options_button.setObjectName("select_processing_options_button")
             self.train_button = QtWidgets.QPushButton(self.train_confandrun_buttons_container)
             self.train_button.setEnabled(False)
-            self.train_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(211*SCALE_FACTOR), int(51*SCALE_FACTOR)))
+            #self.train_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(211*SCALE_FACTOR), int(51*SCALE_FACTOR)))
             self.train_button.setStyleSheet("font: 20pt \"MS Shell Dlg 2\";\n"
                                             "")
             self.train_button.setObjectName("train_button")
             self.select_models_button = QtWidgets.QPushButton(self.train_confandrun_buttons_container)
-            self.select_models_button.setGeometry(QtCore.QRect(int(230*SCALE_FACTOR), int(10*SCALE_FACTOR), int(261*SCALE_FACTOR), int(21*SCALE_FACTOR)))
+            #self.select_models_button.setGeometry(QtCore.QRect(int(230*SCALE_FACTOR), int(10*SCALE_FACTOR), int(261*SCALE_FACTOR), int(21*SCALE_FACTOR)))
             self.select_models_button.setObjectName("select_models_button")
             self.train_button.clicked.connect(__run_training)
+
+
+            self.gridLayout_3.addWidget(self.train_button, 0, 0, 2, 1)
+            self.gridLayout_3.addWidget(self.select_models_button, 0, 1, 1, 1)
+            self.gridLayout_3.addWidget(self.select_processing_options_button, 1, 1, 1, 1)
+
+        self.__train_count_dict = {"Good Jobs": self.good_amt_box, "Bad Jobs": self.bad_amt_box,
+                                   "Neutral Jobs": self.neutral_amt_box, "Ideal Jobs": self.ideal_amt_box}
         self.MainTab.addTab(self.Train, "")
 
     def __setup_combined_tab(self):
@@ -1264,8 +1442,11 @@ class SJCGuiMain(object):
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
                 username = self.lk_username_in_2.toPlainText()
                 if self.lk_checkbox_2.isChecked():
-                    pass
-                    # TODO setup secure saving of linkedin info
+                    self.__save_linkedin_info(username, self.lk_password_in_2.toPlainText())
+                else:
+                    # saves as empty
+                    self.__save_linkedin_info()
+
                 client= LinkdinClient(search_term=search_term,
                                       file_term=file_term,
                                       location=location,
@@ -1284,7 +1465,6 @@ class SJCGuiMain(object):
             clfI = QWorkerCompatibleClassificationInterface(file_term,1,mode='live',no_labels=2)
             worker.signals.finished.connect(lambda  : clfI.classify_live_jobs())
             clfI.signals.finished.connect (lambda  : reactivate())
-
 
         def __clinkedin_forms_toggle():
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
@@ -1329,6 +1509,7 @@ class SJCGuiMain(object):
             self.jb_dropdown_2.setObjectName("jb_dropdown_2")
             self.jb_dropdown_2.addItem("")
             self.jb_dropdown_2.addItem("")
+            self.jb_dropdown_2.setMaximumHeight(31)
             self.verticalLayout_16.addWidget(self.jb_dropdown_2)
             self.classifier_label_2 = QtWidgets.QGroupBox(self.sc_field_container)
             self.classifier_label_2.setGeometry(QtCore.QRect(int(660*SCALE_FACTOR), int(10*SCALE_FACTOR), int(201*SCALE_FACTOR), int(171*SCALE_FACTOR)))
@@ -1346,16 +1527,17 @@ class SJCGuiMain(object):
             self.clf_model_label_2.setObjectName("clf_model_label_2")
             self.clf_model_input_2 = QtWidgets.QTextEdit(self.classifier_label_2)
             self.clf_model_input_2.setEnabled(False)
-            self.clf_model_input_2.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(100*SCALE_FACTOR), int(181*SCALE_FACTOR), int(41*SCALE_FACTOR)))
+            self.clf_model_input_2.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(100*SCALE_FACTOR), int(181*SCALE_FACTOR), int(31*SCALE_FACTOR)))
             self.clf_model_input_2.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
             self.clf_model_input_2.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
             self.clf_model_input_2.setAcceptRichText(True)
             self.clf_model_input_2.setObjectName("clf_model_input_2")
-            self.clf_auto_checkbox2 = QtWidgets.QCheckBox(self.classifier_label_2)
-            self.clf_auto_checkbox2.setEnabled(True)
-            self.clf_auto_checkbox2.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(50*SCALE_FACTOR), int(191*SCALE_FACTOR), int(31*SCALE_FACTOR)))
-            self.clf_auto_checkbox2.setChecked(True)
-            self.clf_auto_checkbox2.setObjectName("clf_auto_checkbox2")
+            self.clf_auto_checkbox_2 = QtWidgets.QCheckBox(self.classifier_label_2)
+            self.clf_auto_checkbox_2.setEnabled(True)
+            self.clf_auto_checkbox_2.setGeometry(QtCore.QRect(int(10 * SCALE_FACTOR), int(50 * SCALE_FACTOR), int(191 * SCALE_FACTOR), int(31 * SCALE_FACTOR)))
+            self.clf_auto_checkbox_2.setChecked(True)
+            self.clf_auto_checkbox_2.setObjectName("clf_auto_checkbox_2")
+
 
 
         #linkden info elements
@@ -1365,7 +1547,7 @@ class SJCGuiMain(object):
             self.linkedin_info_groupBox_2.setGeometry(QtCore.QRect(int(240*SCALE_FACTOR), int(190*SCALE_FACTOR), int(411*SCALE_FACTOR), int(151*SCALE_FACTOR)))
             self.linkedin_info_groupBox_2.setObjectName("linkedin_info_groupBox_2")
             self.lk_password_in_2 = QtWidgets.QTextEdit(self.linkedin_info_groupBox_2)
-            self.lk_password_in_2.setGeometry(QtCore.QRect(int(111*SCALE_FACTOR), int(30*SCALE_FACTOR), int(161*SCALE_FACTOR), int(21*SCALE_FACTOR)))
+
             self.lk_password_in_2.setAcceptDrops(True)
             self.lk_password_in_2.setInputMethodHints(
                 QtCore.Qt.ImhHiddenText | QtCore.Qt.ImhMultiLine | QtCore.Qt.ImhSensitiveData)
@@ -1380,7 +1562,10 @@ class SJCGuiMain(object):
             self.lk_checkbox_2.setChecked(False)
             self.lk_checkbox_2.setObjectName("lk_checkbox_2")
             self.lk_username_in_2 = QtWidgets.QTextEdit(self.linkedin_info_groupBox_2)
-            self.lk_username_in_2.setGeometry(QtCore.QRect(int(110*SCALE_FACTOR), int(80*SCALE_FACTOR), int(161*SCALE_FACTOR), int(21*SCALE_FACTOR)))
+            self.lk_username_in_2.setGeometry(
+                QtCore.QRect(int(111 * SCALE_FACTOR), int(25 * SCALE_FACTOR), int(161 * SCALE_FACTOR),
+                             int(21 * SCALE_FACTOR)))
+            self.lk_password_in_2.setGeometry(QtCore.QRect(int(110*SCALE_FACTOR), int(75*SCALE_FACTOR), int(161*SCALE_FACTOR), int(21*SCALE_FACTOR)))
             self.lk_username_in_2.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
             self.lk_username_in_2.setObjectName("lk_username_in_2")
             self.lk_password_label_2 = QtWidgets.QLabel(self.linkedin_info_groupBox_2)
@@ -1461,6 +1646,7 @@ class SJCGuiMain(object):
             self.file_term_dropdown(self.ft_dropdown_input_2)
             self.ft_dropdown_input_2.setObjectName("ft_dropdown_input_2")
             self.ft_dropdown_input_2.activated.connect(__file_term_switch)
+            self.ft_dropdown_input_2.setMaximumHeight(31)
         # search term elements
         if True:
             self.st_container_2 = QtWidgets.QGroupBox(self.sc_field_container)
@@ -1522,6 +1708,8 @@ class SJCGuiMain(object):
             self.verticalLayout_22.addWidget(self.no_jobs_input_2)
 
             self.no_jobs_input_2.textChanged.connect(__find_amt_switch)
+
+
         self.MainTab.addTab(self.SearchClassify, "")
 
     def setupUi(self, MainWindow):
@@ -1553,10 +1741,11 @@ class SJCGuiMain(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
         self.retranslateUi(MainWindow)
+        self.__post_set_predefined_fields()
         self.MainTab.setCurrentIndex(1)
         self.iter_use_default_check.toggled['bool'].connect(self.iter_input.setDisabled)
-        self.clf_auto_checkbox2.toggled['bool'].connect(self.clf_model_input_2.setDisabled)
-        self.auto_checkbox.toggled['bool'].connect(self.clf_model_input.setDisabled)
+        self.clf_auto_checkbox_2.toggled['bool'].connect(self.clf_model_input_2.setDisabled)
+
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -1635,9 +1824,9 @@ class SJCGuiMain(object):
                                                 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                                 "p, li { white-space: pre-wrap; }\n"
                                                 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                                "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">input model name here</span></p>\n"
+                                                "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">Manual model input not supported in this version</span></p>\n"
                                                 "<p align=\"center\" style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:10pt;\"><br /></p></body></html>"))
-        self.auto_checkbox.setText(_translate("MainWindow", "Auto-Select Best Model"))
+        self.clf_auto_checkbox.setText(_translate("MainWindow", "Auto-Select Best Model"))
         self.activate_classifier_button.setText(_translate("MainWindow", "Activate"))
         self.open_results_button.setText(_translate("MainWindow", "Open Results Folder"))
         self.MainTab.setTabText(self.MainTab.indexOf(self.Classify), _translate("MainWindow", "Classify"))
@@ -1656,7 +1845,7 @@ class SJCGuiMain(object):
                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                            "p, li { white-space: pre-wrap; }\n"
                                            "</style></head><body style=\" font-family:\'MingLiU_HKSCS-ExtB\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">150</span></p></body></html>"))
+                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">75</span></p></body></html>"))
         self.iter_use_default_check.setText(_translate("MainWindow", "Use Default (reccomended)"))
         self.train_info.setHtml(_translate("MainWindow",
                                            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
@@ -1691,9 +1880,9 @@ class SJCGuiMain(object):
                                                   "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                                   "p, li { white-space: pre-wrap; }\n"
                                                   "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                                  "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Entry Level Chemical Engineer</p>\n"
+                                                  "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Manual model input not supported in this version</p>\n"
                                                   "<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
-        self.clf_auto_checkbox2.setText(_translate("MainWindow", "Auto-Select Best Model"))
+        self.clf_auto_checkbox_2.setText(_translate("MainWindow", "Auto-Select Best Model"))
         self.lk_checkbox_2.setText(_translate("MainWindow", "Save Login Info"))
         self.lk_password_label_2.setText(_translate("MainWindow", "Password"))
         self.lk_username_label_2.setText(_translate("MainWindow", "Username"))
@@ -1728,7 +1917,54 @@ class SJCGuiMain(object):
         self.dl_1_button.setText(_translate("MainWindow", "Download Chromedriver"))
         self.dl_2_button.setText(_translate("MainWindow", "Download Geckodriver"))
         self.exit_button.setText(_translate("MainWindow", "Exit"))
+        self.training_amts_container.setTitle(_translate("MainWindow", "Training Data Amounts"))
+        self.good_amt_label.setText(_translate("MainWindow", "Good"))
+        self.ideal_amt_label.setText(_translate("MainWindow", "Ideal"))
+        self.ideal_amt_box.setHtml(_translate("MainWindow",
+                                              "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                              "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                              "p, li { white-space: pre-wrap; }\n"
+                                              "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8pt; font-weight:400; font-style:normal;\">\n"
+                                              "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>"))
+        self.good_amt_box.setHtml(_translate("MainWindow",
+                                             "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                             "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                             "p, li { white-space: pre-wrap; }\n"
+                                             "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+                                             "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:8pt;\">0</span></p></body></html>"))
+        self.neutral_amt_box.setHtml(_translate("MainWindow",
+                                                "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                                "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                                "p, li { white-space: pre-wrap; }\n"
+                                                "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+                                                "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">0</p></body></html>"))
+        self.bad_amt_box.setHtml(_translate("MainWindow",
+                                            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
+                                            "p, li { white-space: pre-wrap; }\n"
+                                            "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
+                                            "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:8pt;\">0</span></p></body></html>"))
+        self.neutral_amt_label.setText(_translate("MainWindow", "Neutral"))
+        self.bad_amt_label.setText(_translate("MainWindow", "Bad"))
 
+
+    def __post_set_predefined_fields(self):
+        self.__get_linkedin_info()
+
+        # Advanced train options not currently implimented
+        self.select_processing_options_button.setEnabled(False)
+        self.select_models_button.setEnabled(False)
+        self.select_processing_options_button.setText(self.select_processing_options_button.text() + " (Unimplemented)")
+        self.select_models_button.setText(self.select_models_button.text() + " (Unimplemented)")
+
+        # classification model selection not implemented
+        self.clf_model_input_2.setEnabled(False)
+        self.clf_auto_checkbox_2.setChecked(True)
+        self.clf_auto_checkbox_2.setEnabled(False)
+        self.clf_model_input.setEnabled(False)
+        self.clf_auto_checkbox.setChecked(True)
+        self.clf_auto_checkbox.setEnabled(False)
+        self.clf_model_input.setText("Manual model input not supported in this version")
 if __name__ == "__main__":
     import sys
 

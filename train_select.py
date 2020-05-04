@@ -16,7 +16,7 @@ class TrainSelectWindow(object):
         self.MainWindow = window_obj
         self.file_term = file_term
         self.database = sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db'))
-        self.current_uid = None
+        self.current_unique_id = None
         self.current_job = None
         self.current_text = None
 
@@ -36,7 +36,7 @@ class TrainSelectWindow(object):
         nextuns = self.unsorted_jobs.pop()
         if nextuns is not None:
 
-            self.unique_id,self.current_job,self.current_text = nextuns
+            self.current_unique_id, self.current_job, self.current_text = nextuns
             self.job_desc_text.setText(self.current_text)
         else:
             self.MainWindow.close()
@@ -45,8 +45,8 @@ class TrainSelectWindow(object):
         response = button.text()+" Jobs"
         with self.database:
             cur = self.database.execute("INSERT INTO training VALUES(?,?,?,?)",
-                                        (self.unique_id,response,self.current_job,self.current_text,))
-            cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(self.unique_id,))
+                                        (self.current_unique_id, response, self.current_job, self.current_text,))
+            cur.execute("DELETE FROM unsorted WHERE current_unique_id = ?", (self.current_unique_id,))
         self.__get_next_job()
 
     def __no_unsorted_jobs_handler(self):
@@ -71,7 +71,7 @@ class TrainSelectWindow(object):
         self.options_container.setAlignment(QtCore.Qt.AlignCenter)
         self.options_container.setObjectName("options_container")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.options_container)
-        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.gridLayout_2.setObjectName("training_data_layout")
         self.next_button = QtWidgets.QPushButton(self.options_container)
         self.next_button.setStyleSheet("font: 12pt \"MS Shell Dlg 2\";color:Black;")
         self.next_button.setObjectName("next_button")
@@ -199,6 +199,7 @@ class TrainSelectWindow(object):
         self.__setup_options_container()
         self.__setup_text_containers()
         self.__setup_label_container()
+        self.__get_next_job()
 
 
         self.instructions_container.raise_()

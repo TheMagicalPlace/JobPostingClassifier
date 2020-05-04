@@ -34,20 +34,20 @@ def file_setup(file_term):
                 try:
                     if table == 'unsorted':
                         cursor.execute("""CREATE TABLE unsorted 
-                        (unique_id TEXT PRIMARY KEY,          
+                        (current_unique_id TEXT PRIMARY KEY,          
                         job_title text,
                         description text)""")
 
                     if table == 'training':
                         cursor.execute("""CREATE TABLE training 
-                        (unique_id TEXT PRIMARY KEY,          
+                        (current_unique_id TEXT PRIMARY KEY,          
                         label text,
                         job_title text,
                         description text)""")
 
                     elif table == 'metadata':
                         cursor.execute("""CREATE TABLE metadata 
-                        (unique_id TEXT PRIMARY KEY,
+                        (current_unique_id TEXT PRIMARY KEY,
                         search_term TEXT,
                         link TEXT, 
                         location TEXT, 
@@ -56,13 +56,13 @@ def file_setup(file_term):
 
                     if table == 'results':
                         cursor.execute("""CREATE TABLE results 
-                        (unique_id TEXT PRIMARY KEY,         
+                        (current_unique_id TEXT PRIMARY KEY,         
                         label text,
                         job_title text,
                         description text)""")
                     if table == 'model_performance_results':
                         cursor.execute("""CREATE TABLE model_performance_results 
-                        (unique_id TEXT PRIMARY KEY,         
+                        (current_unique_id TEXT PRIMARY KEY,         
                         stemmer text,
                         vectorizer text,
                         transformer text,
