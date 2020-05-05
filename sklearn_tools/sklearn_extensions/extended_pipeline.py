@@ -1,21 +1,23 @@
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeClassifierCV
-from sklearn.svm import LinearSVC,SVC
-from sklearn.preprocessing import MinMaxScaler,MaxAbsScaler,Normalizer,RobustScaler
-from sklearn.linear_model import SGDClassifier
+import os
+from typing import Any, Iterable
+
+from joblib import dump
+from numpy import product
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_extraction.text import HashingVectorizer, CountVectorizer, TfidfTransformer
+from sklearn.linear_model import PassiveAggressiveClassifier, LogisticRegression, LogisticRegressionCV
 from sklearn.linear_model import Perceptron
-from sklearn.linear_model import PassiveAggressiveClassifier,LogisticRegression,LogisticRegressionCV
+from sklearn.linear_model import RidgeClassifierCV
+from sklearn.linear_model import SGDClassifier
 from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neighbors import NearestCentroid
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import HashingVectorizer,CountVectorizer,TfidfVectorizer,TfidfTransformer
-from sklearn_extensions.NLTKUtils import  *
-from typing import List,Any,Iterable
-from joblib import dump
-import os
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler, MaxAbsScaler, Normalizer, RobustScaler
+from sklearn.svm import LinearSVC, SVC
 
-from numpy import product
+from sklearn_tools.sklearn_extensions.NLTKUtils import *
+
 
 def _():
     duals = [True, False]

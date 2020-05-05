@@ -1,14 +1,15 @@
-from sklearn.model_selection import train_test_split
-from sklearn_extensions.benchmarks import *
-from sklearn_extensions.NLTKUtils import *
-
-from sklearn_extensions.extended_pipeline import PipelineComponents
-from joblib import load
 import sqlite3
-import pandas as pd
-from abc import ABC,abstractmethod
+from abc import ABC, abstractmethod
 from itertools import product
-from PyQt5.QtCore import pyqtSlot,pyqtSignal,QRunnable,QObject
+import os
+
+import pandas as pd
+from PyQt5.QtCore import pyqtSlot, pyqtSignal, QRunnable, QObject
+from joblib import load
+
+from sklearn_tools import PipelineComponents
+from sklearn_tools import BenchmarkSuite
+
 
 class Error(Exception):
     pass
@@ -102,7 +103,7 @@ class ClassificationHandler(TextClassificationABC):
                     live_text = data[1]+'\n'+data[2]
                     label = model.predict(live_text)
                     cur.execute("INSERT INTO results VALUES (?,?,?,?)",(data[0],label,data[1],data[2]))
-                    cur.execute("DELETE FROM unsorted WHERE current_unique_id = ?",(data[0]))
+                    cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(data[0]))
         except Exception as e:
             print(e)
 
@@ -170,7 +171,7 @@ class ClassificationInterface():
             raise ModeMismatch(ClassificationInterface.classify_live_jobs.__name__,self.mode)
         with self.database:
             cur = self.database.cursor()
-            model = cur.execute("""SELECT MAX(accuracy),current_unique_id from model_performance_results 
+            model = cur.execute("""SELECT MAX(accuracy),unique_id from model_performance_results 
                             WHERE classification_labels = ?""",(self.no_labels,))
             model_id = list(model)[1]
         model = load(os.path.join(os.getcwd(),self.file_term,'models',model_id))
@@ -183,7 +184,7 @@ class ClassificationInterface():
             raise ModeMismatch(ClassificationInterface.tune_models.__name__,self.mode)
         with self.database:
             cur = self.database.cursor()
-            for model in cur.execute("""SELECT MAX(accuracy),model,current_unique_id,stemmer from model_performance_results
+            for model in cur.execute("""SELECT MAX(accuracy),model,unique_id,stemmer from model_performance_results
                             WHERE classification_labels = ? GROUP BY model""",(self.no_labels,)):
                     score_to_beat,name,unique_id,stemmer = model
 
@@ -193,7 +194,7 @@ class ClassificationInterface():
                     bench = BenchmarkSuite(self.file_term, clf_handler,1)
                     clf,score = bench.hyperparameter_tuning(name,model)
                     if score >score_to_beat:
-                        cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE current_unique_id = ?""",(score,unique_id))
+                        cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE unique_id = ?""",(score,unique_id))
 
 class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable):
 
@@ -230,13 +231,10 @@ class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable
         pass
 
 if __name__ == '__main__':
-    import multiprocessing as mp
-    from tqdm import tqdm
-
     p = list(product(['count'], [None, 'normal', 'max', 'tfidf'], ['porter', 'snowball', 'lemma', None]))
     #clf = ClassificationInterface('Chemical Engineer',10,mode='tune')
     #clf.tune_models()
-    e = QWorkerCompatibleClassificationInterface('Chemical Engineer',100)
+    e = QWorkerCompatibleClassificationInterface('../Chemical Engineer', 100)
     print(QWorkerCompatibleClassificationInterface.__mro__,QWorkerCompatibleClassificationInterface.__dict__)
     print('s')
 

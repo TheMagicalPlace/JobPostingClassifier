@@ -1,25 +1,22 @@
 """Adapted from https://scikit-learn.org/stable/auto_examples/text/plot_document_classification_20newsgroups.html#sphx-glr-auto-examples-text-plot-document-classification-20newsgroups-py"""
 
 
-from sklearn import metrics
-from sklearn.feature_selection import SelectFromModel
-from sklearn.linear_model import LogisticRegression
-from sklearn.utils.extmath import density
-import numpy as np
-import sqlite3
-import pandas as pd
-from sklearn.model_selection import GridSearchCV, ParameterGrid, StratifiedKFold, train_test_split
-from time import time
-from matplotlib import pyplot as plt
 import json
+import os
+import sqlite3
 from _collections import defaultdict
-from  sklearn_extensions.extended_pipeline import *
-import warnings
-from warnings import simplefilter
-import parfit.parfit as pf
-from sklearn.metrics import roc_auc_score
+from time import time
+
+import numpy as np
+import pandas as pd
 import tqdm
-from itertools import product
+from joblib import dump
+from matplotlib import pyplot as plt
+from sklearn import metrics
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.utils.extmath import density
+
+from sklearn_tools import ExtendedPipeline, PipelineComponents, ModelTuningParams
 
 
 def trim(s):

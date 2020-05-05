@@ -1,4 +1,3 @@
-import json
 import os
 import time
 import sqlite3
@@ -9,14 +8,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 import scrapers
-import file_tree_setup
+
 
 
 #TODO normalize file terms for scraper and program
 class IndeedClient:
 
     def __init__(self,search_term,file_term,location,jobs_to_find):
-        file_tree_setup.file_setup(file_term)
+
 
         """Sets up the requisite instance variables for the scraoper
 

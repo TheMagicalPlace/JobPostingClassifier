@@ -1,16 +1,10 @@
 from __future__ import print_function
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import datetime
-import json
-import time
-from scrapers._scraper_template import ScraperBase
-import re
 
 import selenium.common.exceptions as Sexcept
+
+from scrapers._scraper_template import ScraperBase
+
+
 class ScraperLinkdin(ScraperBase):
 
     def get_link(self,element):

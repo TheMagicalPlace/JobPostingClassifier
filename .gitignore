@@ -10,13 +10,13 @@
 /envn2/
 /Infersent/models.py
 /vectors/glove.6B.100d.magnitude
-/sklearn_extensions/featurization.py
+/sklearn_tools/featurization.py
 /ex.py
 /Models/
-/sklearn_extensions/encoder/
-/sklearn_extensions/Infersent/
-/sklearn_extensions/GloVe/
-/sklearn_extensions/vectors/
+/sklearn_tools/encoder/
+/sklearn_tools/Infersent/
+/sklearn_tools/GloVe/
+/sklearn_tools/vectors/
 /Chemical Engineer/models/
 /Chemical Engineer/models/model_files/
 /Chemical Engineer/models/old/

@@ -1,24 +1,15 @@
-
-
-
-
-
-
-
-
-
-
-#TODO fix file extension stuff for windows compatibility
 #TODO check out why occasional hangs on 1st job page
 
-import time
-import re
 import abc
-from datetime import timedelta
 import json
 import os
-from typing import Iterable
+import re
 import sqlite3
+import time
+from datetime import timedelta
+from typing import Iterable
+
+
 class ScraperBase(abc.ABC):
     """Abstract base class for all of my job board web scrapers"""
 

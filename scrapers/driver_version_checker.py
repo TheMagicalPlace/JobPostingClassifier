@@ -1,8 +1,12 @@
+import json
+import os
+import sys
+from collections import defaultdict
+
 from selenium import webdriver
 from selenium.common.exceptions import *
-import os
-from collections import defaultdict
-import json
+
+
 def driverversionchecker():
 
 
@@ -20,12 +24,26 @@ def driverversionchecker():
             try:
                 driver_info = setdict['driver_version']
                 if driver_info['browser'] == 'firefox':
-                    driver = webdriver.Firefox(
-                    executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['version'], 'geckodriver.exe'))
+
+                    if sys.platform == 'win32':
+                        driver = webdriver.Firefox(
+                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['versions'],
+                                                         'geckodriver.exe'))
+                    else:
+                        driver = webdriver.Firefox(
+                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['versions'],
+                                                         'geckodriver'))
                 else:
-                    driver = webdriver.Chrome(
-                    executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', driver_info['version'],
-                                             'chromedriver.exe'))
+                    if sys.platform == 'win32':
+                        driver = webdriver.Chrome(
+                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver',
+                                                         driver_info['versions'],
+                                                         'chromedriver.exe'))
+                    else:
+
+                        driver = webdriver.Chrome(
+                        executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', driver_info['versions'],
+                                             'chromedriver'))
                 driver.get("https://www.google.com")
             except WebDriverException:
                 driver,browser, version = set_driver_version()
@@ -33,8 +51,6 @@ def driverversionchecker():
                 data.seek(0)
                 data.write(json.dumps(setdict))
     return driver
-
-
 
 def set_driver_version():
     version_try_order=[]
@@ -52,13 +68,23 @@ def set_driver_version():
 
     for versions in version_order:
         try:
-            driver = webdriver.Firefox(executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver',versions[0],'geckodriver.exe'))
+            if sys.platform == 'win32':
+                driver = webdriver.Firefox(executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver',versions[0],'geckodriver.exe'))
+            else:
+                driver = webdriver.Firefox(
+                    executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', versions[0],
+                                                 'geckodriver'))
             driver.get("https://www.google.com")
 
         except WebDriverException as e:
             print(e)
             try:
-                driver = webdriver.Chrome(executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver',versions[1],'chromedriver.exe'))
+                if sys.platform == 'win32':
+                    driver = webdriver.Chrome(executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver',versions[1],'chromedriver.exe'))
+                else:
+                    driver = webdriver.Chrome(
+                        executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', versions[1],
+                                                     'chromedriver'))
                 driver.get("https://www.google.com")
 
             except WebDriverException as e:

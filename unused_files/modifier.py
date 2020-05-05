@@ -1,7 +1,7 @@
 
 
 
-with open('../qt_gui.py', 'r') as intf:
+with open('../ui/qt_gui.py', 'r') as intf:
     hm = intf.read()
 
 import re

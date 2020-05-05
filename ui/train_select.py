@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file 'job_select_ui.ui'
-#
-# Created by: PyQt5 UI code generator 5.14.2
-#
-# WARNING! All changes made in this file will be lost!
-
+import os
+import sqlite3
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import sqlite3,os
+
+from ui import SCALE_FACTOR
 
 class TrainSelectWindow(object):
 
@@ -46,7 +41,7 @@ class TrainSelectWindow(object):
         with self.database:
             cur = self.database.execute("INSERT INTO training VALUES(?,?,?,?)",
                                         (self.current_unique_id, response, self.current_job, self.current_text,))
-            cur.execute("DELETE FROM unsorted WHERE current_unique_id = ?", (self.current_unique_id,))
+            cur.execute("DELETE FROM unsorted WHERE unique_id = ?", (self.current_unique_id,))
         self.__get_next_job()
 
     def __no_unsorted_jobs_handler(self):

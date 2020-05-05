@@ -1,17 +1,10 @@
-# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file 'job_results_page.ui'
-#
-# Created by: PyQt5 UI code generator 5.14.2
-#
-# WARNING! All changes made in this file will be lost!
-
+import os
+import sqlite3
+import webbrowser
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import sqlite3
-import os
-import webbrowser
+from ui import SCALE_FACTOR
 
 class ResultsWindow(object):
 
@@ -30,10 +23,10 @@ class ResultsWindow(object):
         with self.database:
             cur = self.database.cursor()
             self.results_jobs = cur.execute("""
-                SELECT results.current_unique_id,results.description,results.job_title,metadata.link,metadata.company,metadata.location 
+                SELECT results.unique_id,results.description,results.job_title,metadata.link,metadata.company,metadata.location 
                 FROM results 
                 INNER JOIN metadata 
-                ON results.current_unique_id = metadata.current_unique_id 
+                ON results.unique_id = metadata.unique_id 
                 WHERE results.label = 'Good Jobs' 
                 OR results.label = 'Ideal Jobs'""").fetchall()
             self.results_jobs.append(None)
@@ -60,7 +53,7 @@ class ResultsWindow(object):
         with self.database:
             cur = self.database.execute("INSERT INTO training VALUES(?,?,?,?)",
                                         (self.unique_id,response,self.current_job,self.current_text,))
-            cur.execute("DELETE FROM results WHERE current_unique_id = ?",(self.unique_id,))
+            cur.execute("DELETE FROM results WHERE unique_id = ?",(self.unique_id,))
         self.__get_next_result()
 
     def __no_results_jobs_handler(self):
@@ -546,7 +539,7 @@ if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
-    ui = ResultsWindow(MainWindow,'Chemical Engineer')
+    ui = ResultsWindow(MainWindow, '../Chemical Engineer')
 
     MainWindow.show()
     sys.exit(app.exec_())

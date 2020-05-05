@@ -1,6 +1,7 @@
 import os
 import sqlite3
-import file_tree_setup
+from ui import file_tree_setup
+
 
 class util:
     file_term = "../Chemical Engineer"

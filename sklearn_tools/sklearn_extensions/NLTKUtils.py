@@ -1,15 +1,10 @@
-import nltk.data
-from nltk.tokenize import word_tokenize
-from nltk import pos_tag
-from nltk.stem import PorterStemmer, WordNetLemmatizer
-from nltk.corpus import wordnet as wn
-from collections import defaultdict
-from nltk.stem.snowball import SnowballStemmer
 import re
-import tqdm
+from collections import defaultdict
 
-import numpy as np
-import os
+from nltk import pos_tag
+from nltk.corpus import wordnet as wn
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+from nltk.stem.snowball import SnowballStemmer
 
 
 # TODO - add number-word equv. to tokenizer, i.e. 1-'one' etc. for experience regex
@@ -118,7 +113,7 @@ class GloveStruct:
     """contains glove for use with glove based document processing
 
     implemented as a class to avoid cluttering global namespace"""
-    #glove = Magnitude(os.path.join(os.getcwd(), 'sklearn_extensions', 'vectors', 'glove.6B.100d.magnitude'))
+    #glove = Magnitude(os.path.join(os.getcwd(), 'sklearn_tools', 'vectors', 'glove.6B.100d.magnitude'))
 
 """
 class GloveTokenize:

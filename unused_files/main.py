@@ -1,7 +1,7 @@
 from scrapers import *
 from unused_files.job_data_write import *
-from file_tree_setup import *
-from NBJobClassifier import *
+from ui.file_tree_setup import *
+from sklearn_tools.SLJobClassifier import *
 import json
 import os
 from  collections import defaultdict

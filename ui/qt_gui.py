@@ -1,29 +1,20 @@
-# -*- coding: utf-8 -*-
-
-# Form implementation generated from reading ui file 'classifierguiup.ui'
-#
-# Created by: PyQt5 UI code generator 5.14.2
-#
-# WARNING! All changes made in this file will be lost!
-
-import PyQt5
-import os,json
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QColorDialog
-from PyQt5.QtCore import pyqtSlot,pyqtSignal
-from scrapers import IndeedClient,LinkdinClient
-from NBJobClassifier import ClassificationInterface,QWorkerCompatibleClassificationInterface
+import base64
+import json
+import os
 import sqlite3
 from collections import defaultdict
-from webdriver_handlers import DriverManagerChrome,DriverManagerFirefox
-from train_select import *
-from result_navigator import ResultsWindow
-import base64
 
-SCALE_FACTOR = 1.5
+import PyQt5
+from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import pyqtSlot, pyqtSignal
 
-
-
+from sklearn_tools.SLJobClassifier import QWorkerCompatibleClassificationInterface
+from scrapers import IndeedClient, LinkdinClient
+from ui import SCALE_FACTOR
+from ui import _TrainSelectWindow as TrainSelectWindow
+from ui import _ResultsWindow as ResultsWindow
+from ui.webdriver_handlers import DriverManagerChrome, DriverManagerFirefox
+from ui import file_setup
 
 class WorkerSignals(QtCore.QObject):
 
@@ -42,9 +33,6 @@ class WorkerGeneric(QtCore.QRunnable):
     def run(self):
         self.method(*self.args,**self.kwargs)
         self.signals.finished.emit()
-
-
-
 
 class SJCGuiMain(object):
     def __init__(self):
@@ -78,12 +66,15 @@ class SJCGuiMain(object):
                 data.write(json.dumps(dict(setdict)))
 
     def __update_file_terms(self,file_term):
+
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
             setdict = defaultdict(list, settings)
 
             if file_term not in setdict['file_terms']:
                 setdict['file_terms'].append(file_term)
+                if file_term != 'None':
+                    file_setup(file_term)
             file_terms = setdict['file_terms']
             data.seek(0)
             data.write(json.dumps(dict(setdict)))
@@ -1034,9 +1025,6 @@ class SJCGuiMain(object):
             self.open_results_button.setEnabled(False)
         self.MainTab.addTab(self.Classify, "")
 
-
-
-
     def __setup_train_tab(self):
 
         def get_train_amounts():
@@ -1186,7 +1174,7 @@ class SJCGuiMain(object):
             self.train_term_input.setLayoutDirection(QtCore.Qt.LeftToRight)
 
             self.train_term_input.setObjectName("train_term_input")
-            self.train_term_input.setMaximumSize(QtCore.QSize(201*SCALE_FACTOR, 31*SCALE_FACTOR))
+            self.train_term_input.setMaximumSize(QtCore.QSize(int(201*SCALE_FACTOR), 31))
             self.file_term_dropdown(self.train_term_input)
             # open sorting button
             self.manual_sort_button = QtWidgets.QPushButton(self.train_term_container)
@@ -1970,10 +1958,12 @@ if __name__ == "__main__":
 
     PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = SJCGuiMain()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+    SCALE_FACTOR = set_ui_scale()
+    if True:
+        MainWindow = QtWidgets.QMainWindow()
+        ui = SJCGuiMain()
+        ui.setupUi(MainWindow)
+        MainWindow.show()
+        sys.exit(app.exec_())
 
 

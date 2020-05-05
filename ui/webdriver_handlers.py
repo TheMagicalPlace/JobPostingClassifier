@@ -8,14 +8,11 @@ import tqdm
 import tarfile
 from abc import ABC,abstractmethod
 
-
 class UnsupportedOSError(Exception):
     def __init__(self,driver):
         self.message =f"""Unsupported operating system '{sys.platform}' detected, either try and install {driver}
                             manually or use this application on a different operating system"""
         super().__init__(self.message)
-
-
 
 class DriverManagerABC(ABC):
 

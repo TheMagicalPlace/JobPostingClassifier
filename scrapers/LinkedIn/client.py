@@ -1,26 +1,25 @@
 
 from __future__ import print_function
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from scrapers.LinkedIn.scrape import ScraperLinkdin as _ScraperLinkedin
-import datetime
+
 import os
-import json
-import time
 import re
-from collections import Counter
-from selenium.webdriver.common.action_chains import ActionChains
-import selenium
 import sqlite3
+import time
+from collections import Counter
+
+import selenium
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+from scrapers.LinkedIn.scrape import ScraperLinkdin as _ScraperLinkedin
 from scrapers.driver_version_checker import driverversionchecker
 
 
-
-class LIClient(object):
+class LIClient():
     def __init__(self, search_term,file_term,location,jobs_to_find):
         # TODO generalize webdriver path
         self.location = location

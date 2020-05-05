@@ -1,20 +1,4 @@
-import time
-from collections import defaultdict
-import json
-import logging
-
-#from xvfbwrappxer import Xvfb
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import *
-
-import os
 from scrapers import _scraper_template
-
-
 
 class ScraperIndeed(_scraper_template.ScraperBase):
     link_id = "jobtitle"

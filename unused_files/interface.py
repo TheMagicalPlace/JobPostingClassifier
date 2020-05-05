@@ -1,9 +1,7 @@
-import sys, os , json
-
 import click
 import base64
 
-from file_tree_setup import *
+from ui.file_tree_setup import *
 from scrapers import IndeedClient,LinkdinClient
 
 class EncryptionHandler:
