@@ -8,6 +8,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 import scrapers
+from scrapers import driver_version_checker
 
 
 
@@ -30,7 +31,6 @@ class IndeedClient:
         self.jobs_to_find = jobs_to_find
         self.search_term = search_term
         self.file_term = file_term
-
         self.scrape_continue = True
 
     def __call__(self):
@@ -43,8 +43,8 @@ class IndeedClient:
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
 
-        # TODO generalize webdriver path
-        self.driver = webdriver.Chrome(os.path.join(os.getcwd(),'drivers','chromedriver'))
+
+        self.driver = scrapers._driverversionchecker()
 
         self.scraper =scrapers._ScraperIndeed(self.driver,
                                               database=self.database,

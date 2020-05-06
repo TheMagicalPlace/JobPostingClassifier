@@ -14,23 +14,26 @@ class TrainSelectWindow(object):
         self.current_unique_id = None
         self.current_job = None
         self.current_text = None
+        self.closed = False
 
-        self.setupUi()
+
         with self.database:
             cur = self.database.cursor()
             self.unsorted_jobs = cur.execute("SELECT * from unsorted").fetchall()
             self.unsorted_jobs.append(None)
 
-
+        self.setupUi()
         if self.unsorted_jobs[0] is not None:
             self.__get_next_job()
         else:
             self.__no_unsorted_jobs_handler()
 
+    def __exit(self):
+        self.closed = True
+        self.MainWindow.close()
     def __get_next_job(self):
-        nextuns = self.unsorted_jobs.pop()
+        nextuns = self.unsorted_jobs.pop(0)
         if nextuns is not None:
-
             self.current_unique_id, self.current_job, self.current_text = nextuns
             self.job_desc_text.setText(self.current_text)
         else:
@@ -78,7 +81,7 @@ class TrainSelectWindow(object):
         self.gridLayout_2.addWidget(self.exit_button, 2, 0, 1, 1)
 
         self.next_button.clicked.connect(self.__get_next_job)
-        self.exit_button.clicked.connect(lambda : self.MainWindow.close())
+        self.exit_button.clicked.connect(self.__exit)
 
     def __setup_text_containers(self):
         self.instructions_container = QtWidgets.QGroupBox(self.hold_frame)
@@ -194,8 +197,6 @@ class TrainSelectWindow(object):
         self.__setup_options_container()
         self.__setup_text_containers()
         self.__setup_label_container()
-        self.__get_next_job()
-
 
         self.instructions_container.raise_()
         self.groupBox.raise_()
@@ -219,60 +220,14 @@ class TrainSelectWindow(object):
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9.5pt;\">Instructions : Sort each job description by using either the Ideal,Good,Neutral, or Bad buttons, </span><span style=\" font-size:9.5pt; text-decoration: underline;\">or use the Ignore button if the job is completely unrelated to your search</span><span style=\" font-size:9.5pt;\"> (i.e. a chemical engineering job from an electrical engineering search term). If you want to come back to this job later use the Next button, and if you want to stop sorting for now, use the Exit Button.</span></p></body></html>"))
-        self.job_desc_text.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">CNC Programmer Machinist</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Bent River Machine, Inc.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">- Clarkdale, AZ 86324</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Bent River Machine is seeking a CNC Programmer Machinist responsible for developing the program code to machine parts based on the blueprint along with optimizing the programs to achieve better efficiency. The CNC Programmer Machinist works independently with little direct supervision in the maintenance of assigned systems and the development and installation of systems of moderate size/complexity.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Current CAM software is FeatureCam, previous experience not required but preferable that this software is known or can be quickly learned.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">RESPONSIBILITIES</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Create process plans and programs on time and within budget</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">High level of operational support for mutual success – promote a team environment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Review customer requirements and incorporate within processes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Analyze drawings, computer models and design data to correctly calculate part dimensions for machines, tool selection, machine speeds, feed rates and efficient tool path development</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Facilitate the flow of work and resource requirements within the shop floor to meet job requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Maximize manufacturing performance on all assigned products</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Design work holding fixtures</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Produce CNC programs with minimal errors</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Check and release all produced CNC programs to prevent crashes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Inspect parts for compliance upon execution of programs.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Research and implement techniques to increase machine run time</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Communicate recommendations to modify processes to improve productivity and quality</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Complete required records and time scan-in and scan-out of billable jobs</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Observe and contribute during machine set-ups and optimize processes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Recommend tool purchases and maintain current tools</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Perform routine preventive maintenance on assigned equipment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Assist and participate in continuous improvements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Adhere to company safety requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Comply with company ISO/Quality Management System requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Work as a fabrication team to meet operational quality objectives and metrics: on time to promise, quality, product yield, and hours completed</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Support Quoting Lead by providing machining times and blank material sizes.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">JOB REQUIREMENTS</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Significant experience: CAD/CAM, FeatureCam, Esprit, NX, Mastercam, Gibbs, Solidworks, etc. Experience in any or all programs</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Great problem solving skills and the ability to handle simultaneous projects</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Process planning experience including shop routings, set-up sheets, tool lists, bills of material, assembly instructions and process sequences</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Must have knowledge of the latest tools available and be able to research and implement for best optimal performance</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Knowledge in assembly, machining, good machining practices, feeds and speeds, ability to read and understand drawings, quality control and safety.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Experience working in a lean manufacturing or continuous improvement environment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Self-motivated and capable of working with minimal supervision</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Ability to lift 75lbs.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">COMPENSATION</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">This is a full time, hourly position with compensation based on experience. Full time employees are eligible for benefits after 90 days of employment. This includes holiday pay, vacation/paid time off, health insurance, dental insurance, long term disability, IRA program with percentage match contributions, and educational opportunities for skill set development.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Job Type: Full-time</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">Experience:</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">CNC Programming on CAM/CAD Software: 5 years (Required)</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\">n/a</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p></body></html>"))
+        self.job_desc_text.setHtml(_translate("MainWindow", """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" 
+        "http://www.w3.org/TR/REC-html40/strict.dtd"> <html><head><meta name="qrichtext" content="1" /><style 
+        type="text/css"> p, li { white-space: pre-wrap; } </style></head><body style=" font-family:'MS Shell Dlg 2'; 
+        font-size:12pt; font-weight:400; font-style:normal;"> <p style="-qt-paragraph-type:empty; margin-top:0px; 
+        margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p> <p 
+        style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; 
+        text-indent:0px;"><span style=" font-family:'MS Shell Dlg 2,sans-serif'; font-size:10pt;"> </span><span 
+        style=" font-size:10pt;"> </span></p></body></html>))"""))
         self.catagory_container.setTitle(_translate("MainWindow", "Catagories"))
         self.ideal_button.setToolTip(_translate("MainWindow", "Use for jobs that are a perfect fit for your qualifications and requirements"))
         self.ideal_button.setText(_translate("MainWindow", "Ideal"))

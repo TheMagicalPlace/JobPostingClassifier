@@ -37,7 +37,7 @@ class ResultsWindow(object):
             self.__no_results_jobs_handler()
 
     def __get_next_result(self):
-        nextuns = self.results_jobs.pop()
+        nextuns = self.results_jobs.pop(0)
         if nextuns is not None:
             self.unique_id, self.current_text, self.current_job,self.link,self.company,self.location = nextuns
             self.job_desc_text.setText(self.current_text)
@@ -48,8 +48,10 @@ class ResultsWindow(object):
             self.MainWindow.close()
 
     def __button_click_response_handler(self,button):
-
-        response = button.text()+" Jobs"
+        if button.text() == 'Next':
+            response = "Ignore Jobs"
+        else:
+            response = button.text()+" Jobs"
         with self.database:
             cur = self.database.execute("INSERT INTO training VALUES(?,?,?,?)",
                                         (self.unique_id,response,self.current_job,self.current_text,))
@@ -389,7 +391,7 @@ class ResultsWindow(object):
 
         self.exit_button.clicked.connect(lambda : self.MainWindow.close())
         self.open_job_link_button.clicked.connect(lambda : webbrowser.open(self.link))
-        self.next_button.clicked.connect(lambda b = self.ignore_button : self.__button_click_response_handler(self.ignore_button))
+        self.next_button.clicked.connect(lambda b = self.next_button : self.__button_click_response_handler(self.next_button))
 
     def setupUi(self):
         MainWindow = self.MainWindow

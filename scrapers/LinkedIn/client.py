@@ -33,9 +33,7 @@ class LIClient():
 
     def driver_startup(self):
         """launches the webdriver & navigated to indeed homepage"""
-        # TODO configure driver info
         self.driver = driverversionchecker()
-        self.database = sqlite3.connect(os.path.join(os.getcwd(), self.file_term, f'{self.file_term}.db'))
         self.scraper = _ScraperLinkedin(self.driver,
                                         self.database,
                                         search_term=self.search_term,
@@ -44,6 +42,7 @@ class LIClient():
         self.driver.maximize_window()
 
     def __call__(self, username,password):
+        self.database = sqlite3.connect(os.path.join(os.getcwd(), self.file_term, f'{self.file_term}.db'))
         self.driver_startup()
         self.login(username,password)
         self.navigate_to_jobs_page()

@@ -1,11 +1,25 @@
 import re
 from collections import defaultdict
-
+import os
+import nltk
 from nltk import pos_tag
 from nltk.corpus import wordnet as wn
+from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.stem.snowball import SnowballStemmer
+from nltk.tokenize.casual import casual_tokenize
+from nltk.tokenize import word_tokenize,sent_tokenize
 
+
+def __nltk_corpus_data_downloader():
+    path = os.path.join(os.getcwd(), 'sklearn_tools', 'sklearn_extensions', 'nltk_corpus_data')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    nltk.data.path.append(path)
+    for tag,resources in {'taggers':['averaged_perceptron_tagger'],'corpora':['wordnet','stopwords'],'tokenizers':['punkt']}.items():
+        for resource in resources:
+            if not os.path.exists(os.path.join(path,tag,resource)):
+                nltk.downloader.download(resource,download_dir = path)
 
 # TODO - add number-word equv. to tokenizer, i.e. 1-'one' etc. for experience regex
 def create_tokens(text: str):
@@ -18,11 +32,14 @@ def create_tokens(text: str):
     num2int = {'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'zero':0}
     to_append = []
     stop_word_regex = re.compile(
-        r"((\b| )(for|is|a|the|an|as|to|and|with|in|inc|eg|etc|n/a|that|be|[A-Za-z0-9]{1})([^A-Za-z0-9]|\b))+")
+        r"""(\b| )(on|ideal|working|canidate|result|results|this|able|just|individual|must|at|work|uniquely|qualified|
+        leader|global|have|who|into|position|of|our|than|more|exciting|opportunity|job|are|looking|
+        now|we|us|do|does|doing|for|is|a|the|an|as|to|and|with|in|inc|eg|etc|n/a|that|be|[A-Za-z0-9]{1})([^A-Za-z0-9.]){1}""")
     text = text.lower().strip()
     ex = re.compile(r'(\b| )?([0-9]|one|two|three|four|five|six|seven|eight|nine|zero)((-)([0-9]+|one|two|three|four|five|six|seven|eight|nine|zero)|\+)? years?')
     experience = re.findall(ex, text)
-    gpa = re.findall(r'(\b| )([0-9]\.[0-9])', text)
+    gpa = re.findall(r'(?<=[\s]{1})([0-9]\.[0-9]){1,2}', text)
+
 
     # feature engineering, 'X years of experience, X-Y years of experience, X+ years of experience' are all
     # made into custom tokens to better reflect their significance as pertains to job postings
@@ -51,8 +68,9 @@ def create_tokens(text: str):
 
     # removing custom features
     text = re.sub(ex, ' ', text)
-    text = re.sub(r'(\b| )([0-9]\.[0-9])', ' ', text)
+    text = re.sub(r'(?<=[\s]{1})([0-9]\.[0-9]){1,2}', ' ', text)
 
+    stop_words = set(stopwords.words('english'))
     # removing stop words
     text = re.sub(stop_word_regex, ' ', text)
 
@@ -60,14 +78,32 @@ def create_tokens(text: str):
     text = re.sub(r'(http(s)?://(www\.)?|www\.)([a-zA-Z0-9]+(/([a-zA-Z0-9]+(\.[a-zA-Z]{2,4})?)?|\.[a-zA-Z]{2,4}[/]?))+',
                   '', text)
 
-    # substituting symbol(s) with corresponding words
+    # removing key contextual groups (i.e. $80 should be '80 dollars' as one feature')
+
     text = re.sub('%', ' percent', text)
+    percents = re.findall(r"[0-9]{1,3} percent",text)
+    [to_append.append(per) for per in percents]
+    text = re.sub(r"[0-9]{1,3} percent",'',text)
+
+    text = re.sub(r'()(\$)([0-9.]+)([ ])+',r"\1\3 dollars ",text)
+    dollar_amts = re.findall(r"[0-9.]+ dollars",text)
+    [to_append.append(amt) for amt in dollar_amts]
+    text = re.sub(r"[0-9.]+ dollars",'',text)
+
+    # initial round of tokenization
+    text = word_tokenize(text)
+    text = ' '.join(text)
 
     # removing any remaining non alpha-numberic characters
-    text = re.sub(r'[^A-Za-z0-9]+', ' ', text)
+    text = re.sub(r'[.]','',text)
+    text = re.sub(r'[ ]+[^A-Za-z0-9]+[ ]+', ' ', text)
+
+    # removing remaining punctuation
+
 
     text = text.strip().split(' ')
-    text = [t for t in text if t.strip() != '']
+    text = [t for t in text if t not in ['',' '] ]
+    #text = [t for t in text if t.strip() != '']
     text += to_append
     return text
 
@@ -154,3 +190,13 @@ def tfidf_glove(df, idf_dict):
         vectors.append(np.average(glove_vectors, axis=0, weights=weights))
     return np.array(vectors)
 """
+
+if __name__ == '__main__':
+    __nltk_corpus_data_downloader()
+    snowball = SnowballTokenizer()
+    casual_tokenize('to be fair.aaa aaa aaa')
+    print(snowball('to be fair. $3.11 beeb. aaa aaa aaa 80% 3453'))
+    lemma = LemmaTokenizer()
+    lemma('test')
+    stem = StemTokenizer()
+    stem('test')

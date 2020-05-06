@@ -15,10 +15,15 @@ from ui import _TrainSelectWindow as TrainSelectWindow
 from ui import _ResultsWindow as ResultsWindow
 from ui.webdriver_handlers import DriverManagerChrome, DriverManagerFirefox
 from ui import file_setup
+import time
+
+from version import VERSION
 
 class WorkerSignals(QtCore.QObject):
 
     finished = pyqtSignal()
+    exception = pyqtSignal(Exception)
+    update = pyqtSignal()
 
 class WorkerGeneric(QtCore.QRunnable):
 
@@ -31,8 +36,25 @@ class WorkerGeneric(QtCore.QRunnable):
 
     @pyqtSlot()
     def run(self):
-        self.method(*self.args,**self.kwargs)
-        self.signals.finished.emit()
+        try:
+            self.method(*self.args,**self.kwargs)
+        except Exception as e:
+            self.signals.exception.emit(e)
+        else:
+            self.signals.finished.emit()
+
+class WorkerConstantTimer(QtCore.QRunnable):
+    def __init__(self):
+        super().__init__()
+        self.signal = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        while True:
+            time.sleep(10)
+            self.signal.update.emit()
+
+
 
 class SJCGuiMain(object):
     def __init__(self):
@@ -117,7 +139,7 @@ class SJCGuiMain(object):
             worker.signals.finished.connect(lambda : self.dl_2_button.setEnabled(True))
             self.ThreadPool.start(worker)
 
-        def __send_usage_info():
+        def __check_for_update():
             pass
         def __report_issue():
             pass
@@ -575,7 +597,7 @@ class SJCGuiMain(object):
 
         self.dl_1_button.clicked.connect(__download_chromedriver)
         self.dl_2_button.clicked.connect(download_geckodriver)
-        self.usage_button.clicked.connect(__send_usage_info)
+        self.usage_button.clicked.connect(__check_for_update)
         self.report_issue_button.clicked.connect(__report_issue)
         self.exit_button.clicked.connect(__exit)
 
@@ -695,6 +717,10 @@ class SJCGuiMain(object):
                                       jobs_to_find=jobs_to_find)
                 worker = WorkerGeneric(client)
                 self.ThreadPool.start(worker)
+            worker.signals.exception.connect(lambda : self.search_button.setEnabled(True))
+            worker.signals.exception.connect(lambda: self.__toggle_other_tabs(True))
+            worker.signals.exception.connect(lambda exception: print(exception))
+
             worker.signals.finished.connect(lambda : self.search_button.setEnabled(True))
             worker.signals.finished.connect(lambda :  self.__toggle_other_tabs(True))
 
@@ -904,7 +930,7 @@ class SJCGuiMain(object):
 
         # TODO - hook in classifier and check pertinent conditions
         def __run_classifier():
-            self.__toggle_other_tabs(False,self.Classify)
+            self.__toggle_other_tabs(False,(self.Classify,))
             self.activate_classifier_button.setEnabled(False)
             self.open_results_button.setEnabled(False)
             file_term = self.clf_term_input.currentText()
@@ -912,7 +938,7 @@ class SJCGuiMain(object):
             self.ThreadPool.start(clfI)
             clfI.signals.finished.connect(lambda: self.search_button.setEnabled(True))
             clfI.signals.finished.connect(lambda: self.__toggle_other_tabs(True))
-            clfI.signals.finished.connect(lambda: self.open_results_button(True))
+            clfI.signals.finished.connect(lambda: self.open_results_button.setEnabled(True))
 
         def __show_results():
             if self.clf_term_input.currentText() !='None':
@@ -1084,6 +1110,8 @@ class SJCGuiMain(object):
                 except TypeError:
                     # TODO add int requirment message
                     pass
+                except ValueError:
+                    pass
                 else:
                     if self.iter_use_default_check.isChecked() or iters:
                         # TODO add check for acceptable no of training data
@@ -1102,7 +1130,7 @@ class SJCGuiMain(object):
             if self.train_term_input.currentText() != 'None':
                 self.train_term_input.setEnabled(True)
                 sortwindow = QtWidgets.QMainWindow()
-                ui = TrainSelectWindow(sortwindow,self.train_term_input.currentText())
+                sort_ui = TrainSelectWindow(sortwindow,self.train_term_input.currentText())
                 sortwindow.show()
             else:
                 self.train_term_input.setEnabled(False)
@@ -1124,11 +1152,9 @@ class SJCGuiMain(object):
             else:
                 self.manual_sort_button.setEnabled(False)
 
-
-
         def __run_training():
             self.train_button.setEnabled(False)
-            self.__toggle_other_tabs(False,self.Train)
+            self.__toggle_other_tabs(False,(self.Train,))
             file_term = self.train_term_input.currentText()
             iterations = int(self.iter_input.toPlainText())
             handler = QWorkerCompatibleClassificationInterface(file_term=file_term,
@@ -1334,6 +1360,10 @@ class SJCGuiMain(object):
             self.gridLayout_3.addWidget(self.select_models_button, 0, 1, 1, 1)
             self.gridLayout_3.addWidget(self.select_processing_options_button, 1, 1, 1, 1)
 
+        constworker = WorkerConstantTimer()
+        self.ThreadPool.start(constworker)
+        constworker.signal.update.connect(get_train_amounts)
+
         self.__train_count_dict = {"Good Jobs": self.good_amt_box, "Bad Jobs": self.bad_amt_box,
                                    "Neutral Jobs": self.neutral_amt_box, "Ideal Jobs": self.ideal_amt_box}
         self.MainTab.addTab(self.Train, "")
@@ -1419,7 +1449,7 @@ class SJCGuiMain(object):
 
             self.run_button.setEnabled(False)
             self.ft_dropdown_input_2.setEnabled(False)
-            self.__toggle_other_tabs(False,self.SearchClassify)
+            self.__toggle_other_tabs(False,(self.SearchClassify,))
             self.open_results_button_2.setEnabled(False)
 
             search_term = self.st_input_2.toPlainText()
@@ -1449,6 +1479,7 @@ class SJCGuiMain(object):
                                       jobs_to_find=jobs_to_find)
                 worker = WorkerGeneric(client)
                 self.ThreadPool.start(worker)
+
 
             clfI = QWorkerCompatibleClassificationInterface(file_term,1,mode='live',no_labels=2)
             worker.signals.finished.connect(lambda  : clfI.classify_live_jobs())

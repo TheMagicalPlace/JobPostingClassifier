@@ -2,7 +2,7 @@ import sqlite3
 from abc import ABC, abstractmethod
 from itertools import product
 import os
-
+import imblearn
 import pandas as pd
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QRunnable, QObject
 from joblib import load
@@ -25,8 +25,6 @@ class ModeMismatch(Error):
 class TextClassificationABC(ABC):
 
 
-
-
     @abstractmethod
     def __init__(self,file_term : str,
                  database,
@@ -36,7 +34,10 @@ class TextClassificationABC(ABC):
         if mode in ['train','tune']:
             self.dataset = pd.read_sql(f"SELECT label,description from training",self.database)
         elif mode == 'live':
-            self.dataset = pd.read_sql(f"SELECT label,description from unsorted",self.database)
+            self.dataset = pd.read_sql(f"SELECT unsorted.unique_id,unsorted.description,unsorted.job_title,metadata.location "
+                                       f"FROM unsorted "
+                                       f"INNER JOIN metadata ON unsorted.unique_id = metadata.unique_id",self.database)
+            self.dataset.insert(0,'label',0)
     @abstractmethod
     def _text_preprocessing(self):
         pass
@@ -62,7 +63,7 @@ class ClassificationHandler(TextClassificationABC):
                  transform : str =None,
                   ):
         super().__init__(file_term=file_term,database=database,mode=mode)
-
+        self.catagories = no_labels
         # setting up number of catagories used in classification
         if no_labels == 2:
             self.job_label_associations = {'Good Jobs':'Good',
@@ -79,7 +80,7 @@ class ClassificationHandler(TextClassificationABC):
 
 
 
-        self.dataset = self.dataset[self.dataset.label.isin([ _ for _ in self.job_label_associations.keys()])]
+
         self.stemmer = stemmer
         self.vectorizer = vectorizer
         self.transform = transform
@@ -88,6 +89,7 @@ class ClassificationHandler(TextClassificationABC):
         # live sorting uses pickled models , so no customization of text processing is allowed
         if mode in ['train','tune']:
             self.mode = mode
+            self.dataset = self.dataset[self.dataset.label.isin([_ for _ in self.job_label_associations.keys()])]
             self._text_preprocessing()
         elif mode == 'live':
             self.mode = mode
@@ -96,16 +98,18 @@ class ClassificationHandler(TextClassificationABC):
         """ Sorts job descriptions generated during actual use of the program"""
 
         model.apply_stemming = True if model.stemmer != "No Stemmer" else False
-        try:
-            with self.database:
-                cur = self.database.cursor()
-                for i,data in self.dataset.iterrows():
-                    live_text = data[1]+'\n'+data[2]
-                    label = model.predict(live_text)
-                    cur.execute("INSERT INTO results VALUES (?,?,?,?)",(data[0],label,data[1],data[2]))
-                    cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(data[0]))
-        except Exception as e:
-            print(e)
+
+        with self.database:
+            cur = self.database.cursor()
+            for i,data in self.dataset.iterrows():
+                live_text = data.location+'\n'+data.description
+                label = model.predict([live_text])[0]+" Jobs"
+                cur.execute("INSERT INTO results VALUES (?,?,?,?)",(data.unique_id,
+                                                                    label,
+                                                                    data.job_title,
+                                                                    data.description))
+                cur.execute("DELETE FROM unsorted WHERE unique_id = ?",(data.unique_id,))
+
 
     def _text_preprocessing(self):
         '''Processes the text files to remove punctuation, noise (i.e url's), and case from the text
@@ -113,13 +117,18 @@ class ClassificationHandler(TextClassificationABC):
 
         stemmer = PipelineComponents.stemmers[self.stemmer]
         job_cat_data = {}
+
         paths = {}
+        over = imblearn.over_sampling.RandomOverSampler()
         valid_labels = set([_ for _ in self.job_label_associations.keys()])
         for iter,row in self.dataset.iterrows():
             if self.dataset['label'][iter] not in valid_labels:
                 self.dataset.drop(iter)
             self.dataset['label'][iter] = self.job_label_associations[row[0]]
             self.dataset['description'][iter] = stemmer(row[1])
+
+
+
 
 class ClassificationInterface():
 
@@ -172,7 +181,7 @@ class ClassificationInterface():
         with self.database:
             cur = self.database.cursor()
             model = cur.execute("""SELECT MAX(accuracy),unique_id from model_performance_results 
-                            WHERE classification_labels = ?""",(self.no_labels,))
+                            WHERE classification_labels = ?""",(self.no_labels,)).fetchone()
             model_id = list(model)[1]
         model = load(os.path.join(os.getcwd(),self.file_term,'models',model_id))
 
@@ -205,11 +214,11 @@ class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable
 
     def __init__(self,file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal'):
         QRunnable.__init__(self)
-        super().__init__(file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal')
+        super().__init__(file_term,iterations,mode=mode,no_labels=no_labels,tuning_frequency =tuning_frequency)
         self.signals = QWorkerCompatibleClassificationInterface.Signals()
 
     @pyqtSlot()
-    def train_models(self,silent=True,plot=False,*exclude):
+    def train_models(self,silent=False,plot=False,*exclude):
         super().train_models(silent,plot,exclude)
 
     @pyqtSlot()

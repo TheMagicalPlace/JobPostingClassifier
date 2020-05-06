@@ -1,5 +1,5 @@
 from scrapers import _scraper_template
-
+import re
 class ScraperIndeed(_scraper_template.ScraperBase):
     link_id = "jobtitle"
     job_id = "vjs-jobtitle"
@@ -39,7 +39,9 @@ class ScraperIndeed(_scraper_template.ScraperBase):
         return self.driver.find_element_by_id(self.company_id).text
 
     def get_job_location(self,*args):
-        return self.driver.find_element_by_id(self.location_id).text,
+        loc = self.driver.find_element_by_id(self.location_id).text,
+        loc = re.sub(r'[-\'\\,]','',loc[0])
+        return loc.strip()
 
     def get_description(self,*args):
         return self.driver.find_element_by_id(self.desc_id).text

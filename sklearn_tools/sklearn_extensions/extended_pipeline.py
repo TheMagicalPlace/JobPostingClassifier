@@ -5,7 +5,7 @@ from joblib import dump
 from numpy import product
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import HashingVectorizer, CountVectorizer, TfidfTransformer
-from sklearn.linear_model import PassiveAggressiveClassifier, LogisticRegression, LogisticRegressionCV
+from sklearn.linear_model import PassiveAggressiveClassifier, LogisticRegression, LogisticRegressionCV,ElasticNetCV
 from sklearn.linear_model import Perceptron
 from sklearn.linear_model import RidgeClassifierCV
 from sklearn.linear_model import SGDClassifier
@@ -17,7 +17,7 @@ from sklearn.preprocessing import MinMaxScaler, MaxAbsScaler, Normalizer, Robust
 from sklearn.svm import LinearSVC, SVC
 
 from sklearn_tools.sklearn_extensions.NLTKUtils import *
-
+from xgboost import XGBClassifier
 
 def _():
     duals = [True, False]
@@ -175,13 +175,15 @@ class ModelTuningParams:
 
 class PipelineComponents:
     models = {
+        'XGBClassifier' : XGBClassifier(),
+        'ElasticNetClassifier' : SGDClassifier(penalty="elasticnet",l1_ratio=0.5,loss='log', tol=0.0001),
         'RidgeClassifierCV': RidgeClassifierCV(),
-        'Perceptron': Perceptron(max_iter=50,penalty='l1'),
+        'Perceptron': Perceptron(max_iter=2500,penalty='l2'),
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
         'KNeighborsClassifier': KNeighborsClassifier(n_neighbors=50),
         'RandomForestClassifier': RandomForestClassifier(n_estimators=1000),
-        'LinearSVC': LinearSVC(dual=False,penalty='l1',tol=1e-3),
-        'SGDClassifier': SGDClassifier(alpha=.0001,penalty='l1'),
+        'LinearSVC': LinearSVC(dual=False,penalty='l2',tol=1e-3),
+        'SGDClassifier': SGDClassifier(alpha=.0001,penalty='l2'),
         'SGDClassifier_elasticnet':SGDClassifier(alpha=.0001,penalty="elasticnet"),
         'NearestCentroid': NearestCentroid(),
         'MultinomialNB': MultinomialNB(alpha=.01),
@@ -190,11 +192,12 @@ class PipelineComponents:
         'SVC':SVC(),
         'LogisticRegression': LogisticRegression(solver='lbfgs',max_iter=5000,penalty='l2'),
         'LogisticRegressionCV' : LogisticRegressionCV(max_iter=5000,n_jobs=-1)
+
     }
 
     vectorizers = {
         'hashing': HashingVectorizer(tokenizer=dummy,preprocessor=dummy),
-        'count':CountVectorizer(tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=1000),
+        'count':CountVectorizer(min_df=5,tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=1000),
         #'glove':GloveTokenize()
     }
 
@@ -207,9 +210,9 @@ class PipelineComponents:
         None : dummy
     }
     transformers = {
-        'tfidf' : TfidfTransformer(use_idf=True,sublinear_tf=True),
+        'tfidf' : TfidfTransformer(norm='l2',use_idf=True),
         'minmax' : MinMaxScaler(),
-        'normal' : Normalizer(norm='l1'),
+        'normal' : Normalizer(norm='l2'),
         'robust' : RobustScaler(),
         'max' : MaxAbsScaler(),
         None : 'passthrough',

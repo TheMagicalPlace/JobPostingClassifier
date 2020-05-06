@@ -6,6 +6,7 @@ import os
 import sqlite3
 from _collections import defaultdict
 from time import time
+from statistics import mean
 
 import numpy as np
 import pandas as pd
@@ -48,45 +49,105 @@ class BenchmarkSuite():
         self.shuffle_dataset()
         self.uid_base = "_".join([str(len(self.dataset['label'].unique())),str(self.stemmer),str(self.transform),str(self.vectorizer)])
         self.best_score_ledger = {}
-
-
-    def get_best_model_configs(self):
-        active_models = ['LinearSVC',
+        self.active_models =['LinearSVC',
                           'LogisticRegressionCV',
                           'LogisticRegression',
                           'Perceptron',
-                          'RidgeClassifierCV',
-                          'SGDClassifier']
+                          #'RidgeClassifierCV',
+                          'SGDClassifier',
+                         #'PassiveAggressiveClassifier',
+                         'ElasticNetClassifier',
+                         'RandomForestClassifier',
+                             'XGBClassifier',]
+
+    def get_best_model_configs(self):
         self.best_models = {}
         with self.database:
             cur = self.database.cursor()
-            for model in active_models:
+            for model in self.active_models:
                 if self.tuning_depth == 'minimal':
-                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results")
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results")
                 elif self.tuning_depth == 'normal':
-                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results WHERE model = ?",
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
                                     (model,))
                 elif self.tuning_depth == 'maximal':
-                    a = cur.execute("SELECT MAX(accuracy),current_unique_id from model_performance_results WHERE model = ?",
+                    a = cur.execute("SELECT MAX(accuracy),unique_id from model_performance_results WHERE model = ?",
                                     (model,))
                     # TODO not implimented, same as normal
                 self.best_models[model] = list(a)[0][0]
 
     def shuffle_dataset(self):
         """ Splits the presorted job data for model training"""
-        train,test = train_test_split(self.dataset,test_size=0.3,stratify = self.dataset.label,shuffle=True)
+        labels = self.dataset.label.unique()
+        good_jobs = self.dataset[self.dataset.label == "Good"]
+        bad_jobs = self.dataset[self.dataset.label == "Bad"]
+
+        if len(labels) == 2:
+            # oversample
+            resize = max(len(good_jobs.label),len(bad_jobs.label))
+            # undersample
+            resize =  min(len(good_jobs.label), len(bad_jobs.label))
+            good_jobs_re = good_jobs.sample(resize)
+            bad_jobs_re = bad_jobs.sample(resize)
+            dataset = pd.concat([good_jobs_re, bad_jobs_re])
+        elif len(labels) == 3:
+            neutral_jobs = self.dataset[self.dataset.label == "Neutral"]
+            # oversample
+            resize = max(len(good_jobs.label), len(bad_jobs.label),len(neutral_jobs.label))
+            # undersample
+            resize = min(len(good_jobs.label), len(bad_jobs.label),len(neutral_jobs.label))
+
+            good_jobs_re = good_jobs.sample(resize, replace=True)
+            bad_jobs_re = bad_jobs.sample(resize, replace=True)
+            neutral_jobs_re = bad_jobs.sample(resize, replace=True)
+            dataset = pd.concat([good_jobs_re, bad_jobs_re,neutral_jobs_re])
+        elif len(labels) == 4:
+            neutral_jobs = self.dataset[self.dataset.label == "Neutral"]
+            ideal_jobs = self.dataset[self.dataset.label == "Ideal"]
+
+            # middle of the road approach
+            resize = int(mean([len(good_jobs.label), len(bad_jobs.label),len(neutral_jobs.label),len(ideal_jobs.label)]))
+            good_jobs_re = good_jobs.sample(resize, replace=True)
+            bad_jobs_re = bad_jobs.sample(resize, replace=True)
+            neutral_jobs_re = bad_jobs.sample(resize, replace=True)
+            ideal_jobs_re = ideal_jobs.sample(resize,replace=True)
+            train = pd.concat([good_jobs_re, bad_jobs_re,neutral_jobs_re,ideal_jobs_re])
+
+        train,test = train_test_split(dataset,test_size=0.2,stratify = dataset.label,shuffle=True)
+        #test = self.dataset[~self.dataset.isin(train)].dropna()
+       #test = self.dataset[(~dataset.label.isin(self.dataset.label))&(~dataset.description.isin(self.dataset.description))]
+        #0tr_hashes = [hash(tuple(d)) for d in train.description]
+        #ytest = [val for iter,val in self.dataset.iterrows() if hash(tuple(val.description)) not in tr_hashes]
+
         self.y_train,self.y_test = train.label.values,test.label.values
         self.X_train,self.X_test = train.description.values,test.description.values
 
+    def ignore_suboptimal_combinations(self,active_models):
+        if self.transform =='max':
+            not_trained = ['ElasticNetClassifier',
+                          'PassiveAggressiveClassifier',
+                           'RidgeClassifierCV',]
+        elif self.transform =='normal':
+            not_trained = ['ElasticNetClassifier',
+                          'PassiveAggressiveClassifier',
+                           'SDGClassifier',
+                           'LinearSVC',
+                           'RidgeClassifierCV',
+                            'LogisticRegression',]
+        elif self.transform == 'tfidf':
+            not_trained = ['ElasticNetClassifier',
+                          'PassiveAggressiveClassifier',
+                           'RidgeClassifierCV',
+                            'LogisticRegression',]
+        else:
+            not_trained = []
+        active_models = [model for model in active_models if model not in not_trained]
+        return active_models
     def training_controller(self, silent=True, plot=False):
         """Runs the data through a preselected series of models and returns results for each"""
         no_labels = len(self.dataset['label'].unique())
-        active_models = ['LinearSVC',
-                          'LogisticRegressionCV',
-                          'LogisticRegression',
-                          'Perceptron',
-                          'RidgeClassifierCV',
-                          'SGDClassifier']
+        active_models = self.active_models
+        active_models = self.ignore_suboptimal_combinations(active_models)
         models_to_run = {model: ExtendedPipeline(model,self.vectorizer,self.transform,self.stemmer,apply_stemming=False)
                          for model in active_models}
         with self.database:
@@ -99,7 +160,7 @@ class BenchmarkSuite():
                     self.best_score_ledger[model] = [0, 0]
                 except sqlite3.IntegrityError:
                     scores_to_beat = cur.execute("""SELECT f1_score,accuracy from model_performance_results
-                                                               WHERE current_unique_id = ? """,
+                                                               WHERE unique_id = ? """,
                                                               (self.uid_base+'_'+model,))
                     self.best_score_ledger[model] = [_ for _ in list(scores_to_beat)[0]]
 
@@ -107,6 +168,8 @@ class BenchmarkSuite():
         results = defaultdict(dict)
 
         for _ in tqdm.tqdm(range(self.iterations)):
+            if not silent:
+                print(f'\nRound {_}:\nStemmer : {self.stemmer}\nTransformer : {self.transform}\n')
             self.shuffle_dataset()
             for name,model in models_to_run.items():
                 res = self.train_models(model, silent=silent)
@@ -118,7 +181,7 @@ class BenchmarkSuite():
             uid = self.uid_base + '_' + model
             with self.database:
                 cur = self.database.cursor()
-                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE current_unique_id = ?",
+                cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",
                             (self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
         if plot==True:
@@ -161,6 +224,9 @@ class BenchmarkSuite():
         accuracy = metrics.accuracy_score(y_test, pred)
         fbeta = metrics.fbeta_score(y_test, pred,1,labels=self.dataset['label'].unique(),average='weighted')
         name = clf.name[0]
+        if False:
+            score_stats = f'Model : {name} | Score : {accuracy} | F-beta : {fbeta}'
+            print(score_stats)
 
         if self.best_score_ledger[name][0] < accuracy:
             last = self.best_score_ledger[name][0]
@@ -171,12 +237,12 @@ class BenchmarkSuite():
             print(score_stats)
 
             if accuracy > self.best_models[name] and last != 0.0 and self.tuning_depth in ['normal','maximal']:
-
                 new_model,score = self.hyperparameter_tuning(name,clf)
                 if score > accuracy:
                     self.best_score_ledger[name][0] = score
                     clf = new_model
             dump(clf, os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}'))
+
 
 
             if not silent:
@@ -199,67 +265,16 @@ class BenchmarkSuite():
                 if True:
                     print("confusion matrix:")
                     print(metrics.confusion_matrix(y_test, pred))
-
+        elif not os.path.exists(
+                os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}')):
+            dump(clf, os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}'))
         clf_descr = str(clf).split('(')[0]
         return clf_descr, accuracy, train_time, test_time
 
-    def show_results(self,plot=True,silent=False):
-        """Runs the data through a preselected series of models and returns results for each"""
-
-        models_to_run  = {model:PipelineComponents.models[model] for model in
-                          ['LinearSVC',
-                           'LogisticRegressionCV','LogisticRegression','Perceptron','RidgeClassifier','SGDClassifier']}
-        benchmark = self.train_models
-        b_silent = self.benchmark_silent
-        results = []
-        for nam , clf in models_to_run.items():
-            try:
-                if silent:
-                    pipe = ExtendedPipeline(clf,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
-                    results.append(b_silent(pipe))
-                else:
-                    pipe = ExtendedPipeline(clf, self.vectorizer, transformer=self.transform, stemmer=self.stemmer,apply_stemming=False)
-                    results.append(benchmark(pipe))
-            except ValueError as e:
-                print(e)
-                print('failed')
-
-
-        indices = np.arange(len(results))
-
-        results = [[x[i] for x in results] for i in range(4)]
-
-        clf_names, score, training_time, test_time = results
-        training_time = np.array(training_time) / np.max(training_time)
-        test_time = np.array(test_time) / np.max(test_time)
-
-        # saving run results
-        with open(os.path.join(os.getcwd(), self.file_term, 'Models', 'model_stats.json'), 'w') as models:
-            m = json.dumps(self.models)
-            models.write(m)
-
-        # plots run statistics for each model if true, not recommended to be run in combination with iterative benching
-        if plot==True:
-            plt.figure(figsize=(12, 8))
-            plt.title("Score")
-            plt.barh(indices, score, .2, label="score", color='navy')
-            plt.barh(indices + .3, training_time, .2, label="training time",
-                     color='c')
-            plt.barh(indices + .6, test_time, .2, label="test time", color='darkorange')
-            plt.yticks(())
-            plt.legend(loc='best')
-            plt.subplots_adjust(left=.25)
-            plt.subplots_adjust(top=.95)
-            plt.subplots_adjust(bottom=.05)
-
-            for i, c in zip(indices, clf_names):
-                plt.text(-.3, i, c)
-
-            plt.show()
-
     def hyperparameter_tuning(self,model : str,clf=None):
-        if model in ['LogisticRegressionCV','RidgeClassifierCV']:
+        if model in ['LogisticRegressionCV','RidgeClassifierCV','XGBClassifier','ElasticNetClassifier']:
             return clf,0
+        self.shuffle_dataset()
         X_train, X_test, y_train, y_test = self.X_train, self.X_test, self.y_train, self.y_test
         print(f'Tuning {model}')
         t0 = time()
@@ -275,7 +290,7 @@ class BenchmarkSuite():
         base.fit(X_train,y_train)
 
 
-        tuned_2 = GridSearchCV(estimator=clf,param_grid=parameters,n_jobs=-1,scoring='accuracy')
+        tuned_2 = GridSearchCV(estimator=clf,param_grid=parameters,n_jobs=-1,scoring='f1')
         tuned_pipe = GridSearchCV(estimator = ExtendedPipeline(model,
                                                                self.vectorizer,
                                                                transformer=self.transform,
@@ -304,73 +319,4 @@ class BenchmarkSuite():
             return tuned_pipe.best_estimator_,re
         else:
             return tuned_2.best_estimator_,re2
-
-
-
-
-def DEPRECIATED_comparison_decorator(func):
-    """Decorator function for comparing the results of the current model settings with previous runs and settings"""
-    def wrapper(*args):
-
-        old_data = defaultdict(list)
-        # getting previous model stats
-        runstat = []
-        file_term,iterations,_,_,_ = args
-        model_history = defaultdict(list)
-        try:
-            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'r') as models:
-                model_history.update(json.loads(models.read()))
-                for k, v in model_history.items():
-                    runstat = [_ for _ in list(zip(*v))[1]]
-                    for it in v:
-                        old_data[k].append(it[0])
-        except FileNotFoundError:
-            pass
-
-        # this should be a function that runs a model + config and saves the results to ./*search_term */Models/...
-        func(*args)
-        try:
-            with open(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'), 'r') as models:
-                last = json.loads(models.read())
-                for k, v in last.items():
-                    old_data[k].insert(0,v[0])
-                runstat.insert(0,last[k][1])
-        except FileNotFoundError as e:
-            print(e)
-            pass
-
-        current_data = {}
-        for k in last.keys():
-            current_data[k] = old_data[k]
-
-        # resetting live model stats to none
-        os.unlink(os.path.join(os.getcwd(), file_term,'Models', 'model_stats.json'))
-
-        clf = [k for k in last.keys()]
-
-        labels = pd.DataFrame(data=runstat,columns=['Specifications'])
-        data = pd.DataFrame(current_data)
-        data = labels.join(data)
-
-        print(data.to_string())
-
-        # saving combined model stats
-        all_keys = list(model_history.keys())+list(last.keys())
-        all_keys = set(all_keys)
-        try:
-            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
-                for key in all_keys:
-                    try:
-                        model_history[key].insert(0, last[key])
-                    except KeyError:
-                        model_history[key].insert(0,[None,None])
-                models.write(json.dumps(model_history))
-
-        except FileNotFoundError:
-            model_history = defaultdict(list)
-            for key in last.keys():
-                model_history[key].insert(0, last[key])
-            with open(os.path.join(os.getcwd(), file_term,'Models', 'old', f'model_stats_log.json'), 'w') as models:
-                models.write(json.dumps(last))
-    return wrapper
 

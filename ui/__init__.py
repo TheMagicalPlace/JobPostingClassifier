@@ -10,11 +10,11 @@ def set_ui_scale():
     moniter_h = QtWidgets.QDesktopWidget().screenGeometry(-1).height()
     if sys.platform == 'win32':
         if moniter_h == 1080:
-            scale = 0.8
+            scale = 1.0
         elif moniter_h == 1440:
             scale = 1.0
         else:
-            scale = 1.25
+            scale = 1.0
     elif sys.platform == 'linux':
         if moniter_h == 1080:
             scale = 1.0

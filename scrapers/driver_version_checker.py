@@ -27,22 +27,22 @@ def driverversionchecker():
 
                     if sys.platform == 'win32':
                         driver = webdriver.Firefox(
-                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['versions'],
+                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['version'],
                                                          'geckodriver.exe'))
                     else:
                         driver = webdriver.Firefox(
-                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['versions'],
+                            executable_path=os.path.join(os.getcwd(), 'webdrivers', 'geckodriver', driver_info['version'],
                                                          'geckodriver'))
                 else:
                     if sys.platform == 'win32':
                         driver = webdriver.Chrome(
                             executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver',
-                                                         driver_info['versions'],
+                                                         driver_info['version'],
                                                          'chromedriver.exe'))
                     else:
 
                         driver = webdriver.Chrome(
-                        executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', driver_info['versions'],
+                        executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', driver_info['version'],
                                              'chromedriver'))
                 driver.get("https://www.google.com")
             except WebDriverException:
