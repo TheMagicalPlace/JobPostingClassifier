@@ -10,14 +10,21 @@
 /envn2/
 /Infersent/models.py
 /vectors/glove.6B.100d.magnitude
-/sklearn_extensions/featurization.py
+/sklearn_tools/featurization.py
 /ex.py
 /Models/
-/sklearn_extensions/encoder/
-/sklearn_extensions/Infersent/
-/sklearn_extensions/GloVe/
-/sklearn_extensions/vectors/
-/Chemical Engineer/Models/
-/Chemical Engineer/Models/model_files/
-/Chemical Engineer/Models/old/
+/sklearn_tools/encoder/
+/sklearn_tools/Infersent/
+/sklearn_tools/GloVe/
+/sklearn_tools/vectors/
+/Chemical Engineer/models/
+/Chemical Engineer/models/model_files/
+/Chemical Engineer/models/old/
 /Chemical Engineer/Unsorted/
+/webdrivers/chromedriver/80.0.3987.106/
+/webdrivers/chromedriver/83.0.4103.14/
+/webdrivers/geckodriver/v0.24.0/
+/webdrivers/geckodriver/v0.25.0/
+/webdrivers/geckodriver/v0.26.0/
+/job_results_page.ui
+/scrapers/LinkedIn/execute.py
