@@ -1,76 +1,43 @@
 import sqlite3,json,os,sys
-file_term = "Entry Level Computer Programmer"
-url = "localhost:8080"
-
-
-from sys import getsizeof, stderr
-from itertools import chain
-from collections import deque
-try:
-    from reprlib import repr
-except ImportError:
-    pass
-
 import requests
 
-def total_size(o, handlers={}, verbose=False):
-    """ Returns the approximate memory footprint an object and all of its contents.
+class ServerDataHandler:
 
-    Automatically finds the contents of the following builtin containers and
-    their subclasses:  tuple, list, deque, dict, set and frozenset.
-    To search other containers, add handlers to iterate over their contents:
+    url = "http://127.0.0.1:8000/submit"
+    catagories = ['unique_id', 'search_term', 'job_title', 'description', 'label', 'link', 'location',
+                  'company', 'date_posted']
 
-        handlers = {SomeContainerClass: iter,
-                    OtherContainerClass: OtherContainerClass.get_elements}
+    def __init__(self,file_term):
+        self.database = sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db'))
+        self.file_term = file_term
 
-    """
-    dict_handler = lambda d: chain.from_iterable(d.items())
-    all_handlers = {tuple: iter,
-                    list: iter,
-                    deque: iter,
-                    dict: dict_handler,
-                    set: iter,
-                    frozenset: iter,
-                   }
-    all_handlers.update(handlers)     # user handlers take precedence
-    seen = set()                      # track which object id's have already been seen
-    default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
+    def get_training_data(self):
+        response = requests.get(ServerDataHandler.url, params={"search_term":str(self.file_term)})
 
-    def sizeof(o):
-        if id(o) in seen:       # do not double count the same object
-            return 0
-        seen.add(id(o))
-        s = getsizeof(o, default_size)
+        json_content = json.loads(response.content)
+        tabulated_data = list(json_content.values())
+        training_data = [tabulated_data[0],tabulated_data[4],tabulated_data[2],tabulated_data[3]]
+        train = list(zip(*training_data))
+        with self.database as db:
+            cursor = db.cursor()
+            cursor.executemany("INSERT OR REPLACE INTO training VALUES (?,?,?,?)",zip(*training_data))
 
-        if verbose:
-            print(s, type(o), repr(o), file=stderr)
+    def send_training_data(self):
+        with self.database as db:
+            cursor = db.cursor()
+            data = cursor.execute(
+                """SELECT training.unique_id,metadata.search_term,training.job_title,training.description,
+                training.label,metadata.link,metadata.location 
+                FROM training LEFT JOIN  metadata ON training.unique_id = metadata.unique_id""").fetchall()
+        data = list(zip(*data))
 
-        for typ, handler in all_handlers.items():
-            if isinstance(o, typ):
-                s += sum(map(sizeof, handler(o)))
-                break
-        return s
+        json_formatted_data = {cat: (data if cat != 'search_term' else [self.file_term]*len(data)) for
+                cat, data in zip(ServerDataHandler.catagories, data)}
+        post_data = json.dumps(json_formatted_data)
+        requests.post(ServerDataHandler.url, json=post_data)
 
-    return sizeof(o)
-
-
-##### Example call #####
 
 if __name__ == '__main__':
-    with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:
-        cur = connection.cursor()
-        data = cur.execute(
-            "SELECT training.unique_id,metadata.search_term,training.job_title,training.description,training.label,metadata.link,metadata.location FROM training LEFT JOIN  metadata ON training.unique_id = metadata.unique_id").fetchall()
-        data = list(zip(*data))
-        catagories = ['unique_id', 'search_term', 'job_title', 'description', 'label','link', 'location',
-                      'company', 'date_posted']
-        data = {cat:(data if cat != 'search_term' else ["Entry Level Computer Programmer",]*len(data)) for cat, data in zip(catagories, data)}
-        transferable_data = json.dumps(data)
-        print(sys.getsizeof(transferable_data))
-    print(total_size(data, verbose=False))
-
-    r = requests.post("http://127.0.0.1:8000/submit",json=transferable_data)
-    print(r)
-    re = requests.get("http://127.0.0.1:8000/submit",params={"search_term":file_term})
-    print(json.loads(re.content))
-    print(total_size(json.loads(re.content), verbose=False))
+    handler = ServerDataHandler("Entry Level Computer Programmer")
+    handler.send_training_data()
+    handler.get_training_data()
