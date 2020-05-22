@@ -24,7 +24,7 @@ def trim(s):
     """Trim string to fit on terminal (assuming 80-column display)"""
     return s if len(s) <= 80 else s[:77] + "..."
 
-class BenchmarkSuite():
+class ClassificationTrainingTool():
 
     def __init__(self, file_term, classification_handler,iterations,tuning_depth : str = 'minimal'):
 
@@ -61,6 +61,8 @@ class BenchmarkSuite():
                              'XGBClassifier',]
 
     def get_best_model_configs(self):
+        """Sets the 'to-beat' model score for each classification method, used by the training controller
+        to determine when a model is better than the previous best."""
         self.best_models = {}
         with self.database:
             cur = self.database.cursor()
@@ -78,10 +80,12 @@ class BenchmarkSuite():
 
     def shuffle_dataset(self):
         """ Splits the presorted job data for model training"""
+        # TODO explain approached used for selecting training and test data
         labels = self.dataset.label.unique()
         good_jobs = self.dataset[self.dataset.label == "Good"]
         bad_jobs = self.dataset[self.dataset.label == "Bad"]
 
+        # TODO n>2 probablly won't work the way it's supposed to currently
         if len(labels) == 2:
             # oversample
             resize = max(len(good_jobs.label),len(bad_jobs.label))
@@ -111,9 +115,9 @@ class BenchmarkSuite():
             bad_jobs_re = bad_jobs.sample(resize, replace=True)
             neutral_jobs_re = bad_jobs.sample(resize, replace=True)
             ideal_jobs_re = ideal_jobs.sample(resize,replace=True)
-            train = pd.concat([good_jobs_re, bad_jobs_re,neutral_jobs_re,ideal_jobs_re])
+            dataset = pd.concat([good_jobs_re, bad_jobs_re,neutral_jobs_re,ideal_jobs_re])
 
-        train,test = train_test_split(dataset,test_size=0.2,stratify = dataset.label,shuffle=True)
+        train,test = train_test_split(dataset,test_size=0.25,stratify = dataset.label,shuffle=True)
         #test = self.dataset[~self.dataset.isin(train)].dropna()
        #test = self.dataset[(~dataset.label.isin(self.dataset.label))&(~dataset.description.isin(self.dataset.description))]
         #0tr_hashes = [hash(tuple(d)) for d in train.description]
@@ -123,6 +127,7 @@ class BenchmarkSuite():
         self.X_train,self.X_test = train.description.values,test.description.values
 
     def ignore_suboptimal_combinations(self,active_models):
+        """Combinations that consistently produce comparatively bad results are ignored."""
         if self.transform =='max':
             not_trained = ['ElasticNetClassifier',
                           'PassiveAggressiveClassifier',
@@ -143,6 +148,7 @@ class BenchmarkSuite():
             not_trained = []
         active_models = [model for model in active_models if model not in not_trained]
         return active_models
+
     def training_controller(self, silent=True, plot=False):
         """Runs the data through a preselected series of models and returns results for each"""
         no_labels = len(self.dataset['label'].unique())
@@ -152,6 +158,8 @@ class BenchmarkSuite():
                          for model in active_models}
         with self.database:
             cur = self.database.cursor()
+
+            # if there is no data for the current training settings, create an entry in the table
             for model in active_models:
                 uid = self.uid_base+'_'+model
                 try:
@@ -167,6 +175,7 @@ class BenchmarkSuite():
         self.get_best_model_configs()
         results = defaultdict(dict)
 
+        # run n iterations for each model in this configuration
         for _ in tqdm.tqdm(range(self.iterations)):
             if not silent:
                 print(f'\nRound {_}:\nStemmer : {self.stemmer}\nTransformer : {self.transform}\n')
@@ -177,6 +186,7 @@ class BenchmarkSuite():
                 if plot and scre > results[name]['score']:
                     results[name] = res
 
+        # updating model performance results table
         for model in active_models:
             uid = self.uid_base + '_' + model
             with self.database:
@@ -184,6 +194,7 @@ class BenchmarkSuite():
                 cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",
                             (self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
+        # this is pretty much never going to be used
         if plot==True:
 
             scores = []
@@ -265,6 +276,7 @@ class BenchmarkSuite():
                 if True:
                     print("confusion matrix:")
                     print(metrics.confusion_matrix(y_test, pred))
+        # if no model exists for the current settings, create one by default. Prevents issues if models are deleted.
         elif not os.path.exists(
                 os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}')):
             dump(clf, os.path.join(os.getcwd(), self.file_term, 'models', f'{"_".join([self.uid_base, name])}'))
@@ -272,6 +284,7 @@ class BenchmarkSuite():
         return clf_descr, accuracy, train_time, test_time
 
     def hyperparameter_tuning(self,model : str,clf=None):
+        """Tuning of parameters to valid models using a cross-validation approach (GridSearchCV)"""
         if model in ['LogisticRegressionCV','RidgeClassifierCV','XGBClassifier','ElasticNetClassifier']:
             return clf,0
         self.shuffle_dataset()
@@ -286,10 +299,11 @@ class BenchmarkSuite():
             key_formattted = "__".join([name,k])
             parameters[key_formattted] = v
 
+        # baseline model, should be the same as the input model in most cases
         base = ExtendedPipeline(model,self.vectorizer,transformer=self.transform,stemmer=self.stemmer,apply_stemming=False)
         base.fit(X_train,y_train)
 
-
+        # two tuning approaches
         tuned_2 = GridSearchCV(estimator=clf,param_grid=parameters,n_jobs=-1,scoring='f1')
         tuned_pipe = GridSearchCV(estimator = ExtendedPipeline(model,
                                                                self.vectorizer,
@@ -299,7 +313,7 @@ class BenchmarkSuite():
                                   param_grid=parameters,
                                   n_jobs=-1,
                                   verbose=0,
-                                   scoring='accuracy')
+                                   scoring='f1')
         tuned_2.fit(X_train,y_train)
         tuned_pipe.fit(X_train,y_train)
         r = tuned_pipe.predict(X_test)
@@ -313,6 +327,7 @@ class BenchmarkSuite():
         print(tuned_pipe.best_score_)
         print(tuned_2.best_score_)
 
+        # return best results
         if ree > re2 and ree > re:
             return base,ree
         elif re > re2:

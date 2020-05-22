@@ -8,13 +8,14 @@ from PyQt5.QtCore import pyqtSlot, pyqtSignal, QRunnable, QObject
 from joblib import load
 
 from sklearn_tools import PipelineComponents
-from sklearn_tools import BenchmarkSuite
+from sklearn_tools import ClassificationTrainingTool
 
 
 class Error(Exception):
     pass
 
 class ModeMismatch(Error):
+    """Exception for invalid method-mode combination in some of the following classes"""
     def __init__(self, method_name, mode, *args):
         self.message = f" ModeMismatchError : Current method '{method_name}' does not support mode '{mode}'"
         super().__init__(self.message)
@@ -23,7 +24,7 @@ class ModeMismatch(Error):
         # allow users initialize misc. arguments as any other builtin Error
 
 class TextClassificationABC(ABC):
-
+    """Abstract base class for text classification oriented scikit-learn models."""
 
     @abstractmethod
     def __init__(self,file_term : str,
@@ -38,6 +39,7 @@ class TextClassificationABC(ABC):
                                        f"FROM unsorted "
                                        f"INNER JOIN metadata ON unsorted.unique_id = metadata.unique_id",self.database)
             self.dataset.insert(0,'label',0)
+
     @abstractmethod
     def _text_preprocessing(self):
         pass
@@ -51,6 +53,7 @@ class ClassificationHandler(TextClassificationABC):
 
     One important thing to note is that training a configuration and them using the results to predict unlabeled
     data is not supported. Specifically the 'table' parameter decides """
+
 
     job_label_associations = {'Good Jobs':'Good', 'Bad Jobs':'Bad', 'Neutral Jobs':'Bad', 'Ideal Jobs':'Good'}
 
@@ -77,9 +80,6 @@ class ClassificationHandler(TextClassificationABC):
                                            'Ideal Jobs': 'Good'}
         else:
             self.job_label_associations = ClassificationHandler.job_label_associations
-
-
-
 
         self.stemmer = stemmer
         self.vectorizer = vectorizer
@@ -131,7 +131,7 @@ class ClassificationHandler(TextClassificationABC):
 
 
 class ClassificationInterface():
-
+    """Middleman class for interfacing between external callers (i.e. UI's) and the classification handler classes"""
     def __init__(self,file_term,iterations,mode='train',no_labels=2,tuning_frequency = 'minimal'):
         self.no_labels = no_labels
         self.mode = mode
@@ -146,11 +146,14 @@ class ClassificationInterface():
        pass
 
     def train_models(self,silent=True,plot=False,*exclude):
+        """Runs the training process based on inputs"""
         if self.mode != 'train':
             raise ModeMismatch(ClassificationInterface.train_models.__name__,self.mode)
         count = 0
         combos = list(product(['count'],[None,'normal','max','tfidf'],['porter','snowball','lemma',None]))
 
+        # this is largely based on what I found to provide the best results, and will
+        # likely be changed to be dynamic in a future release
         for vectorizer in ['count']:
             for transformer in [None,'normal','max','tfidf']:
                 for stemmer in ['porter','snowball','lemma',None]:
@@ -164,7 +167,7 @@ class ClassificationInterface():
                                                        vectorizer=vectorizer,
                                                        stemmer=stemmer,
                                                        transform=transformer)
-                        bench = BenchmarkSuite(self.file_term, search,self.iterations)
+                        bench = ClassificationTrainingTool(self.file_term, search, self.iterations)
                         bench.training_controller(silent=silent, plot=plot)
                         count+=1
                         self.qt_progress_signal_manager(vectorizer,transformer,stemmer,round=count,total_rounds=combos.__len__())
@@ -174,7 +177,8 @@ class ClassificationInterface():
                 self.tune_models()
 
     def classify_live_jobs(self):
-        """ Sorts job descriptions generated during actual use of the program"""
+        """ Classifies jobs using the best model for the current file using the
+        corresponding method in the ClassificationHandler."""
 
         if self.mode != 'live':
             raise ModeMismatch(ClassificationInterface.classify_live_jobs.__name__,self.mode)
@@ -189,6 +193,7 @@ class ClassificationInterface():
         clfh.classify_results(model)
 
     def tune_models(self):
+        """Tunes the best models using a cross-validation approach provided by the ClassificationTrainingTool class"""
         if self.mode != 'tune':
             raise ModeMismatch(ClassificationInterface.tune_models.__name__,self.mode)
         with self.database:
@@ -200,13 +205,13 @@ class ClassificationInterface():
                     model = load(os.path.join(os.getcwd(),self.file_term,'models',unique_id))
                     clf_handler = ClassificationHandler(self.file_term,self.database,no_labels=self.no_labels,
                                                         stemmer=stemmer,mode=self.mode)
-                    bench = BenchmarkSuite(self.file_term, clf_handler,1)
+                    bench = ClassificationTrainingTool(self.file_term, clf_handler, 1)
                     clf,score = bench.hyperparameter_tuning(name,model)
                     if score >score_to_beat:
                         cur.execute("""UPDATE model_performance_results SET accuracy = ? WHERE unique_id = ?""",(score,unique_id))
 
 class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable):
-
+    """Qt Threading enabled version of the Classification Interface. """
     class Signals(QObject):
         progress = pyqtSignal(int)
         params = pyqtSignal(tuple)
@@ -223,6 +228,8 @@ class QWorkerCompatibleClassificationInterface(ClassificationInterface,QRunnable
 
     @pyqtSlot()
     def run(self):
+        """QtRunnable compliant training handler. Runs desired process based on the 'mode' flag and the
+        given file term."""
         self.database = sqlite3.connect(os.path.join(os.getcwd(), self.file_term, f'{self.file_term}.db'))
         if self.mode =='train':
             self.train_models()

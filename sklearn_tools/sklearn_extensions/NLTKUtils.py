@@ -12,6 +12,7 @@ from nltk.tokenize import word_tokenize,sent_tokenize
 
 
 def __nltk_corpus_data_downloader():
+    """Downloads required NLTK data if not present"""
     path = os.path.join(os.getcwd(), 'sklearn_tools', 'sklearn_extensions', 'nltk_corpus_data')
     if not os.path.exists(path):
         os.makedirs(path)

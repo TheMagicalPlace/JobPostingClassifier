@@ -4,7 +4,7 @@ import sqlite3
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ui import SCALE_FACTOR
-
+SCALE_FACTOR = 1
 class TrainSelectWindow(object):
 
     def __init__(self,window_obj,file_term):
@@ -60,7 +60,7 @@ class TrainSelectWindow(object):
                                        "for the job type you want to create training models for.")
     def __setup_options_container(self):
         self.options_container = QtWidgets.QGroupBox(self.hold_frame)
-        self.options_container.setGeometry(QtCore.QRect(770, 640, 121, 141))
+        self.options_container.setGeometry(QtCore.QRect(int(770*SCALE_FACTOR), int(640*SCALE_FACTOR), int(121*SCALE_FACTOR), int(141*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.options_container.setFont(font)
@@ -85,23 +85,23 @@ class TrainSelectWindow(object):
 
     def __setup_text_containers(self):
         self.instructions_container = QtWidgets.QGroupBox(self.hold_frame)
-        self.instructions_container.setGeometry(QtCore.QRect(10, 10, 891, 111))
+        self.instructions_container.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(891*SCALE_FACTOR), int(111*SCALE_FACTOR)))
         self.instructions_container.setTitle("")
         self.instructions_container.setObjectName("instructions_container")
         self.instructions_text = QtWidgets.QTextBrowser(self.instructions_container)
-        self.instructions_text.setGeometry(QtCore.QRect(10, 10, 871, 91))
+        self.instructions_text.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(871*SCALE_FACTOR), int(91*SCALE_FACTOR)))
         self.instructions_text.setObjectName("instructions_text")
         self.job_desc_text = QtWidgets.QTextBrowser(self.hold_frame)
-        self.job_desc_text.setGeometry(QtCore.QRect(20, 130, 741, 651))
+        self.job_desc_text.setGeometry(QtCore.QRect(int(20*SCALE_FACTOR), int(130*SCALE_FACTOR), int(741*SCALE_FACTOR), int(651*SCALE_FACTOR)))
         self.job_desc_text.setObjectName("job_desc_text")
         self.groupBox = QtWidgets.QGroupBox(self.hold_frame)
-        self.groupBox.setGeometry(QtCore.QRect(10, 120, 891, 671))
+        self.groupBox.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(120*SCALE_FACTOR), int(891*SCALE_FACTOR), int(671*SCALE_FACTOR)))
         self.groupBox.setTitle("")
         self.groupBox.setObjectName("groupBox")
 
     def __setup_label_container(self):
         self.catagory_container = QtWidgets.QGroupBox(self.groupBox)
-        self.catagory_container.setGeometry(QtCore.QRect(760, 10, 121, 321))
+        self.catagory_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(10*SCALE_FACTOR), int(121*SCALE_FACTOR), int(321*SCALE_FACTOR)))
 
         font = QtGui.QFont()
         font.setPointSize(12)
@@ -175,14 +175,14 @@ class TrainSelectWindow(object):
     def setupUi(self):
         MainWindow = self.MainWindow
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(931, 822)
+        MainWindow.resize(931*SCALE_FACTOR, 822*SCALE_FACTOR)
         font = QtGui.QFont()
         font.setPointSize(12)
         MainWindow.setFont(font)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.hold_frame = QtWidgets.QFrame(self.centralwidget)
-        self.hold_frame.setGeometry(QtCore.QRect(10, 9, 911, 801))
+        self.hold_frame.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(9*SCALE_FACTOR), int(911*SCALE_FACTOR), int(801*SCALE_FACTOR)))
         self.hold_frame.setFrameShape(QtWidgets.QFrame.Box)
         self.hold_frame.setFrameShadow(QtWidgets.QFrame.Plain)
         self.hold_frame.setObjectName("hold_frame")
@@ -212,7 +212,7 @@ class TrainSelectWindow(object):
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:9.5pt;\">Instructions : Sort each job description by using either the Ideal,Good,Neutral, or Bad buttons, </span><span style=\" font-size:9.5pt; text-decoration: underline;\">or use the Ignore button if the job is completely unrelated to your search</span><span style=\" font-size:9.5pt;\"> (i.e. a chemical engineering job from an electrical engineering search term). If you want to come back to this job later use the Next button, and if you want to stop sorting for now, use the Exit Button.</span></p></body></html>"))
+"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Instructions : Sort each job description by using either the Ideal,Good,Neutral, or Bad buttons, </span><span style=\" font-size:12pt; text-decoration: underline;\">or use the Ignore button if the job is completely unrelated to your search</span><span style=\" font-size:12pt;\"> (i.e. a chemical engineering job from an electrical engineering search term). If you want to come back to this job later use the Next button, and if you want to stop sorting for now, use the Exit Button.</span></p></body></html>"))
         self.job_desc_text.setHtml(_translate("MainWindow", """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" 
         "http://www.w3.org/TR/REC-html40/strict.dtd"> <html><head><meta name="qrichtext" content="1" /><style 
         type="text/css"> p, li { white-space: pre-wrap; } </style></head><body style=" font-family:'MS Shell Dlg 2'; 

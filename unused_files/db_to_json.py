@@ -1,5 +1,5 @@
 import sqlite3,json,os,sys
-file_term = "Entry Level Computer Programmer"
+file_term = "../Entry Level Computer Programmer"
 url = "localhost:8080"
 
 

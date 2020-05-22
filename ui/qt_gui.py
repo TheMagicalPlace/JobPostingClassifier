@@ -1474,7 +1474,7 @@ class SJCGuiMain(object):
 
 
         def __run_combined():
-
+            """ run a job search followed by classification"""
             def reactivate():
                 """enables other tabs once operation is complete"""
                 self.run_button.setEnabled(True)
@@ -1482,7 +1482,7 @@ class SJCGuiMain(object):
                 self.__toggle_other_tabs(True)
                 self.open_results_button_2.setEnabled(True)
 
-            """ run a job search followed by classification"""
+
 
             self.run_button.setEnabled(False)
             self.ft_dropdown_input_2.setEnabled(False)
@@ -1494,6 +1494,7 @@ class SJCGuiMain(object):
             location = self.location_input_2.toPlainText()
             jobs_to_find = int(self.no_jobs_input_2.toPlainText())
 
+            # require linkedin username and password if selected
             if self.jb_dropdown_2.currentText() == 'LinkedIn':
                 username = self.lk_username_in_2.toPlainText()
                 if self.lk_checkbox_2.isChecked():
@@ -2005,6 +2006,7 @@ class SJCGuiMain(object):
         self.bad_amt_label.setText(_translate("MainWindow", "Bad"))
 
     def __post_set_predefined_fields(self):
+        """Disables some stuff on the gui that is planned for future releases but not currently implimented"""
         self.__get_linkedin_info()
 
         # Advanced train options not currently implimented

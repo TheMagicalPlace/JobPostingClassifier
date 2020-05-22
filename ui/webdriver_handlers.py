@@ -15,12 +15,16 @@ class UnsupportedOSError(Exception):
         super().__init__(self.message)
 
 class DriverManagerABC(ABC):
+    """Base class for webdriver downloaders. Impliments universal methods for saving data, downloading
+    the drivers, and an abstract method for getting driver-specific download links."""
 
     def __init__(self,driver_id):
         self.driver_id = driver_id
         self._http_pool = urllib3.PoolManager()
         self.download_links = []
         self.versions = []
+
+        # each driver type is saved under its own file path
         self.file_path = os.path.join(os.getcwd(),"webdrivers",self.driver_id)
         pass
 
@@ -30,6 +34,7 @@ class DriverManagerABC(ABC):
             self.save_data(ver,lnk)
 
     def save_data(self, version, dl_link):
+        """Method for saving the downloaded driver to the appropriate location."""
         driver_obj = self._http_pool.request('GET',dl_link,preload_content=False)
         with open(os.path.join(os.getcwd(), self.file_path,f"{self.driver_id}{version}.zip"), 'wb') as driver:
             for chunk in tqdm.tqdm(driver_obj.stream(32)):
@@ -38,6 +43,7 @@ class DriverManagerABC(ABC):
         self._unpack_files(version)
 
     def _unpack_files(self,version):
+        """Method for handling zip file downloads."""
         zip_obj = ZipFile(os.path.join(os.getcwd(), self.file_path, f"{self.driver_id}{version}.zip"), mode='r')
         zip_obj.infolist()
         zip_obj.extractall(path=os.path.join(os.getcwd(), self.file_path, version))
@@ -46,6 +52,8 @@ class DriverManagerABC(ABC):
 
     @abstractmethod
     def get_download_links(self):
+        """Abstract method for handling the navigation of the download site for each driver. Responsible
+        for scraping the download links and handling version checking."""
         pass
 
 class DriverManagerChrome(DriverManagerABC):
@@ -95,6 +103,8 @@ class DriverManagerFirefox(DriverManagerABC):
             self.versions.append(path[0])
 
     def _unpack_files(self,version):
+        """Geckodriver downloads can also come as tar.gz files for non-windows systems, so this method overwrites
+        the one found in the base class to account for the different file types."""
         if sys.platform == 'win32':
             super()._unpack_files(version)
         else:

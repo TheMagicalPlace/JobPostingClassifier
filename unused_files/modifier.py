@@ -1,7 +1,7 @@
 
 
 
-with open('../ui/qt_gui.py', 'r') as intf:
+with open('../ui/result_navigator.py', 'r') as intf:
     hm = intf.read()
 
 import re
@@ -41,6 +41,6 @@ print(e)
 
 
 
-with open('../ui/train_select.py','w') as gut:
+with open('../ui/result_navigator.py','w') as gut:
     gut.write(e)
 print(e)

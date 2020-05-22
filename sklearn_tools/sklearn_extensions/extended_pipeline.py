@@ -52,8 +52,7 @@ def svc_compatability_handler(model,dual : bool):
             'dual': [False]}
     return params
 class ModelTuningParams:
-
-
+    """ Parameters to be used by tuning (i.e. GridSearchCV)"""
 
     models= {
         'Perceptron': {
@@ -174,6 +173,7 @@ class ModelTuningParams:
 
 
 class PipelineComponents:
+    """Key-value pairs used by the ExtendedPipeline class to determine which components to use in the pipeline"""
     models = {
         'XGBClassifier' : XGBClassifier(),
         'ElasticNetClassifier' : SGDClassifier(penalty="elasticnet",l1_ratio=0.5,loss='log', tol=0.0001),
@@ -198,7 +198,7 @@ class PipelineComponents:
     vectorizers = {
         'hashing': HashingVectorizer(tokenizer=dummy,preprocessor=dummy),
         'count':CountVectorizer(min_df=5,tokenizer=dummy,preprocessor=dummy,max_df=0.5,ngram_range=(1,2),max_features=1000),
-        #'glove':GloveTokenize()
+        #'dummy':GloveTokenize()
     }
 
     stemmers = {
@@ -220,17 +220,21 @@ class PipelineComponents:
     }
 
 class ExtendedPipeline(Pipeline):
-
+    """Extends the scikit-learn pipeline to be able to create a pipeline from strings. This mostly
+    just exists to centeralize all the actual scikit-learn imports to one file, as well as increasing
+    the ease of creating a pipeline for text classification modeling."""
 
     def __init__(self,
                  classifier : str,
                  vectorizer : str,
-                 transformer : bool = None,
+                 transformer : str = None,
                  stemmer : str = None,
-                 apply_stemming = True,
+                 apply_stemming = True, # Should usually be false during training, and set to true manually during live use
                  memory=None,
                  verbose=False):
-
+        """Inputs can either be scikit-learn components (as with a regular pipeline) or strings
+        that correspond to the components in the PipelineComponents class. All but the classifier can be None,
+        and are replaced with a dummy method if not given."""
         if isinstance(stemmer, str):
             self.stemmer = PipelineComponents.stemmers[stemmer]
         else:
@@ -288,6 +292,8 @@ class ExtendedPipeline(Pipeline):
         super().__init__(steps=steps,memory=memory,verbose=verbose)
 
     def _stem(self,X):
+        """Handles stemming in the case of text classification, this is set up to minimize training time by
+        not stemming during training, but still remembering stemming settings for live classification."""
         if self.stemmer:
             if self.apply_stemming:
                 Y = []

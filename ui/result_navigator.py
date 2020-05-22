@@ -5,7 +5,7 @@ import webbrowser
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from ui import SCALE_FACTOR
-
+SCALE_FACTOR = 1
 class ResultsWindow(object):
 
     def __init__(self,window_obj,file_term):
@@ -38,9 +38,13 @@ class ResultsWindow(object):
 
     def __get_next_result(self):
         nextuns = self.results_jobs.pop(0)
+        font = QtGui.QFont()
+        font.setPointSize(12)
         if nextuns is not None:
+
             self.unique_id, self.current_text, self.current_job,self.link,self.company,self.location = nextuns
             self.job_desc_text.setText(self.current_text)
+            self.job_desc_text.setFont(font)
             self.jobtitle_info.setText(self.current_job)
             self.company_info.setText(self.company)
             self.location_info.setText(self.location)
@@ -74,30 +78,30 @@ class ResultsWindow(object):
 
     def __setup_text_info_containers(self):
         self.instructions_container = QtWidgets.QGroupBox(self.hold_frame)
-        self.instructions_container.setGeometry(QtCore.QRect(10, 10, 891, 111))
+        self.instructions_container.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(891*SCALE_FACTOR), int(111*SCALE_FACTOR)))
         self.instructions_container.setTitle("")
         self.instructions_container.setObjectName("instructions_container")
         self.instructions_text = QtWidgets.QTextBrowser(self.instructions_container)
-        self.instructions_text.setGeometry(QtCore.QRect(10, 10, 871, 91))
+        self.instructions_text.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(871*SCALE_FACTOR), int(91*SCALE_FACTOR)))
         self.instructions_text.setObjectName("instructions_text")
         self.main_container = QtWidgets.QGroupBox(self.hold_frame)
-        self.main_container.setGeometry(QtCore.QRect(10, 10, 891, 791))
+        self.main_container.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(891*SCALE_FACTOR), int(791*SCALE_FACTOR)))
         self.main_container.setTitle("")
         self.main_container.setFlat(True)
         self.main_container.setObjectName("main_container")
 
         self.job_desc_container = QtWidgets.QGroupBox(self.main_container)
-        self.job_desc_container.setGeometry(QtCore.QRect(0, 120, 751, 671))
+        self.job_desc_container.setGeometry(QtCore.QRect(int(0*SCALE_FACTOR), int(120*SCALE_FACTOR), int(751*SCALE_FACTOR), int(671*SCALE_FACTOR)))
         self.job_desc_container.setTitle("")
         self.job_desc_container.setFlat(False)
         self.job_desc_container.setObjectName("job_desc_container")
         self.job_desc_text = QtWidgets.QTextBrowser(self.job_desc_container)
-        self.job_desc_text.setGeometry(QtCore.QRect(10, 10, 731, 651))
+        self.job_desc_text.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(731*SCALE_FACTOR), int(651*SCALE_FACTOR)))
         self.job_desc_text.setFrameShape(QtWidgets.QFrame.Panel)
         self.job_desc_text.setFrameShadow(QtWidgets.QFrame.Plain)
         self.job_desc_text.setObjectName("job_desc_text")
         self.location_container = QtWidgets.QGroupBox(self.main_container)
-        self.location_container.setGeometry(QtCore.QRect(760, 260, 131, 71))
+        self.location_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(260*SCALE_FACTOR), int(131*SCALE_FACTOR), int(71*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.location_container.setFont(font)
@@ -105,14 +109,17 @@ class ResultsWindow(object):
         self.location_container.setFlat(True)
         self.location_container.setObjectName("location_container")
         self.location_info = QtWidgets.QTextBrowser(self.location_container)
-        self.location_info.setGeometry(QtCore.QRect(0, 20, 131, 21))
+        self.location_info.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(40*SCALE_FACTOR), int(115*SCALE_FACTOR), int(21*SCALE_FACTOR)))
         self.location_info.setFrameShape(QtWidgets.QFrame.Box)
         self.location_info.setFrameShadow(QtWidgets.QFrame.Plain)
-        self.location_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.location_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.location_info.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
         self.location_info.setObjectName("location_info")
+        font = QtGui.QFont()
+        font.setPointSize(8.5)
+        self.location_info.setFont(font)
         self.company_container = QtWidgets.QGroupBox(self.main_container)
-        self.company_container.setGeometry(QtCore.QRect(760, 190, 131, 81))
+        self.company_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(190*SCALE_FACTOR), int(131*SCALE_FACTOR), int(81*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.company_container.setFont(font)
@@ -120,17 +127,17 @@ class ResultsWindow(object):
         self.company_container.setFlat(True)
         self.company_container.setObjectName("company_container")
         self.company_info = QtWidgets.QTextBrowser(self.company_container)
-        self.company_info.setGeometry(QtCore.QRect(0, 20, 131, 21))
+        self.company_info.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(40*SCALE_FACTOR), int(115*SCALE_FACTOR), int(21*SCALE_FACTOR)))
         font = QtGui.QFont()
-        font.setPointSize(12)
+        font.setPointSize(8.5)
         self.company_info.setFont(font)
         self.company_info.setFrameShape(QtWidgets.QFrame.Box)
         self.company_info.setFrameShadow(QtWidgets.QFrame.Plain)
-        self.company_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.company_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.company_info.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
         self.company_info.setObjectName("company_info")
         self.jobtitle_container = QtWidgets.QGroupBox(self.main_container)
-        self.jobtitle_container.setGeometry(QtCore.QRect(760, 120, 131, 71))
+        self.jobtitle_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(120*SCALE_FACTOR), int(131*SCALE_FACTOR), int(71*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.jobtitle_container.setFont(font)
@@ -138,19 +145,19 @@ class ResultsWindow(object):
         self.jobtitle_container.setFlat(True)
         self.jobtitle_container.setObjectName("jobtitle_container")
         self.jobtitle_info = QtWidgets.QTextBrowser(self.jobtitle_container)
-        self.jobtitle_info.setGeometry(QtCore.QRect(0, 20, 131, 21))
+        self.jobtitle_info.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(40*SCALE_FACTOR), int(115*SCALE_FACTOR), int(21*SCALE_FACTOR)))
         font = QtGui.QFont()
-        font.setPointSize(12)
+        font.setPointSize(8.5)
         self.jobtitle_info.setFont(font)
         self.jobtitle_info.setFrameShape(QtWidgets.QFrame.Box)
         self.jobtitle_info.setFrameShadow(QtWidgets.QFrame.Plain)
-        self.jobtitle_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.jobtitle_info.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.jobtitle_info.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustIgnored)
         self.jobtitle_info.setObjectName("jobtitle_info")
 
     def __setup_catagory_buttons(self):
         self.catagory_container = QtWidgets.QGroupBox(self.main_container)
-        self.catagory_container.setGeometry(QtCore.QRect(760, 340, 131, 251))
+        self.catagory_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(340*SCALE_FACTOR), int(131*SCALE_FACTOR), int(251*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.catagory_container.setFont(font)
@@ -218,7 +225,7 @@ class ResultsWindow(object):
     def __setup_options_buttons(self):
 
         self.options_container = QtWidgets.QGroupBox(self.main_container)
-        self.options_container.setGeometry(QtCore.QRect(760, 600, 131, 191))
+        self.options_container.setGeometry(QtCore.QRect(int(760*SCALE_FACTOR), int(600*SCALE_FACTOR), int(131*SCALE_FACTOR), int(191*SCALE_FACTOR)))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.options_container.setFont(font)
@@ -257,11 +264,11 @@ class ResultsWindow(object):
     def setupUi(self):
         MainWindow = self.MainWindow
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(932, 830)
+        MainWindow.resize(932*SCALE_FACTOR, 830*SCALE_FACTOR)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.hold_frame = QtWidgets.QFrame(self.centralwidget)
-        self.hold_frame.setGeometry(QtCore.QRect(10, 10, 911, 811))
+        self.hold_frame.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(911*SCALE_FACTOR), int(811*SCALE_FACTOR)))
         self.hold_frame.setFrameShape(QtWidgets.QFrame.Box)
         self.hold_frame.setFrameShadow(QtWidgets.QFrame.Plain)
         self.hold_frame.setObjectName("hold_frame")
@@ -321,66 +328,13 @@ class ResultsWindow(object):
         self.skip_job_button.setText(_translate("MainWindow", "Skip"))
         self.open_job_link_button.setToolTip(_translate("MainWindow", "Leave current job unsorted and move on to the next."))
         self.open_job_link_button.setText(_translate("MainWindow", "Go to Job"))
-        self.job_desc_text.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">CNC Programmer Machinist</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Bent River Machine, Inc.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">- Clarkdale, AZ 86324</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Bent River Machine is seeking a CNC Programmer Machinist responsible for developing the program code to machine parts based on the blueprint along with optimizing the programs to achieve better efficiency. The CNC Programmer Machinist works independently with little direct supervision in the maintenance of assigned systems and the development and installation of systems of moderate size/complexity.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Current CAM software is FeatureCam, previous experience not required but preferable that this software is known or can be quickly learned.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">RESPONSIBILITIES</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Create process plans and programs on time and within budget</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">High level of operational support for mutual success – promote a team environment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Review customer requirements and incorporate within processes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Analyze drawings, computer models and design data to correctly calculate part dimensions for machines, tool selection, machine speeds, feed rates and efficient tool path development</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Facilitate the flow of work and resource requirements within the shop floor to meet job requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Maximize manufacturing performance on all assigned products</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Design work holding fixtures</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Produce CNC programs with minimal errors</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Check and release all produced CNC programs to prevent crashes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Inspect parts for compliance upon execution of programs.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Research and implement techniques to increase machine run time</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Communicate recommendations to modify processes to improve productivity and quality</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Complete required records and time scan-in and scan-out of billable jobs</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Observe and contribute during machine set-ups and optimize processes</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Recommend tool purchases and maintain current tools</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Perform routine preventive maintenance on assigned equipment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Assist and participate in continuous improvements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Adhere to company safety requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Comply with company ISO/Quality Management System requirements</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Work as a fabrication team to meet operational quality objectives and metrics: on time to promise, quality, product yield, and hours completed</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Support Quoting Lead by providing machining times and blank material sizes.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">JOB REQUIREMENTS</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Significant experience: CAD/CAM, FeatureCam, Esprit, NX, Mastercam, Gibbs, Solidworks, etc. Experience in any or all programs</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Great problem solving skills and the ability to handle simultaneous projects</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Process planning experience including shop routings, set-up sheets, tool lists, bills of material, assembly instructions and process sequences</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Must have knowledge of the latest tools available and be able to research and implement for best optimal performance</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Knowledge in assembly, machining, good machining practices, feeds and speeds, ability to read and understand drawings, quality control and safety.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Experience working in a lean manufacturing or continuous improvement environment</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Self-motivated and capable of working with minimal supervision</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Ability to lift 75lbs.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">COMPENSATION</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">This is a full time, hourly position with compensation based on experience. Full time employees are eligible for benefits after 90 days of employment. This includes holiday pay, vacation/paid time off, health insurance, dental insurance, long term disability, IRA program with percentage match contributions, and educational opportunities for skill set development.</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Job Type: Full-time</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">Experience:</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">CNC Programming on CAM/CAD Software: 5 years (Required)</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\">n/a</span><span style=\" font-size:10pt;\"> </span></p>\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2,sans-serif\'; font-size:10pt;\"> </span><span style=\" font-size:10pt;\"> </span></p></body></html>"))
+
         self.location_container.setTitle(_translate("MainWindow", "Location"))
         self.location_info.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, li { white-space: pre-wrap; }\n"
 "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
-"<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:8.25pt;\">Grosse Ile, MI</span></p>\n"
+"<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:8.25pt;\"></span></p>\n"
 "<p align=\"center\" style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8.25pt;\"><br /></p></body></html>"))
         self.company_container.setTitle(_translate("MainWindow", "Company"))
         self.company_info.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"

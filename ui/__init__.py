@@ -1,11 +1,17 @@
+""" The init file for the ui elements, also sets the UI scaling factor on import, this is used throughout
+the UI to try to ensure proper scaling on every system. Kind of wonky with linux currently."""
+
+
 
 __all__ = ['SJCGuiMain','SCALE_FACTOR','ui_app']
+
 import sys
 from PyQt5 import QtWidgets,QtCore
 from ui.file_tree_setup import file_setup
 
 
 def set_ui_scale():
+    """Sets the universal UI scaling factor, should never be used outside the __init__.py file"""
     # TODO test on other OS and resolutions
     moniter_h = QtWidgets.QDesktopWidget().screenGeometry(-1).height()
     if sys.platform == 'win32':
