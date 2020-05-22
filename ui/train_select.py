@@ -123,9 +123,7 @@ class TrainSelectWindow(object):
         self.ideal_button.setFont(font)
         self.ideal_button.setAutoFillBackground(False)
         self.ideal_button.setStyleSheet(
-            "QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Yellow;font-weight: bold;} "
-            ":disabled {color: Yellow;font-weight: normal;}" 
-            "")
+            "QPushButton {font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: #CCCC00	;font-weight: bold;}")
         self.ideal_button.setFlat(False)
         self.ideal_button.setObjectName("ideal_button")
 
@@ -133,17 +131,14 @@ class TrainSelectWindow(object):
         self.verticalLayout.addWidget(self.ideal_button)
         self.good_button = QtWidgets.QPushButton(self.catagory_container)
         self.good_button.setStyleSheet(
-            "QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Green;font-weight: bold;} "
-            ":disabled {color: Green;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
-            "")
+            "QPushButton {font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Green;font-weight: bold;}"
+      )
         self.good_button.setObjectName("good_button")
 
 
         self.verticalLayout.addWidget(self.good_button)
         self.neutral_button = QtWidgets.QPushButton(self.catagory_container)
-        self.neutral_button.setStyleSheet("QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Black;font-weight: bold;} "
-            ":disabled {color: Black;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
-            "")
+        self.neutral_button.setStyleSheet("QPushButton {font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Black;font-weight: bold;}")
         self.neutral_button.setObjectName("neutral_button")
         self.verticalLayout.addWidget(self.neutral_button)
         self.bad_button = QtWidgets.QPushButton(self.catagory_container)
@@ -157,9 +152,7 @@ class TrainSelectWindow(object):
         font.setWeight(75)
         self.bad_button.setFont(font)
         self.bad_button.setAutoFillBackground(False)
-        self.bad_button.setStyleSheet("QPushButton :enabled{font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Red;font-weight: bold;} "
-            ":disabled {color: Red;font-weight: normal;font: 12pt \"MS Shell Dlg 2\"}"
-            "")
+        self.bad_button.setStyleSheet("QPushButton {font-weight: bold;font: 12pt \"MS Shell Dlg 2\"; color: Red;font-weight: bold;}")
         self.bad_button.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.Switzerland))
         self.bad_button.setObjectName("bad_button")
         self.verticalLayout.addWidget(self.bad_button)

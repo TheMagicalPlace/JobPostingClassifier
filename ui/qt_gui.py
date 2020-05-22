@@ -3,10 +3,14 @@ import json
 import os
 import sqlite3
 from collections import defaultdict
+import re
+import webbrowser
 
 import PyQt5
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import pyqtSlot, pyqtSignal
+import requests
+from bs4 import BeautifulSoup as soup
 
 from sklearn_tools.SLJobClassifier import QWorkerCompatibleClassificationInterface
 from scrapers import IndeedClient, LinkdinClient
@@ -20,13 +24,14 @@ import time
 from version import VERSION
 
 class WorkerSignals(QtCore.QObject):
+    """Qt thread Signals container class, has the signals as class variables for use by QRunnable child classes"""
 
     finished = pyqtSignal()
     exception = pyqtSignal(Exception)
     update = pyqtSignal()
 
 class WorkerGeneric(QtCore.QRunnable):
-
+    """Basic Qt Thread Class for process that shouldn't lock up the gui"""
     def __init__(self,method,*args,**kwargs):
         super().__init__()
         self.method = method
@@ -44,6 +49,7 @@ class WorkerGeneric(QtCore.QRunnable):
             self.signals.finished.emit()
 
 class WorkerConstantTimer(QtCore.QRunnable):
+    """Qt Thread Class for any process that continuously receives new information to display """
     def __init__(self):
         super().__init__()
         self.signal = WorkerSignals()
@@ -55,12 +61,32 @@ class WorkerConstantTimer(QtCore.QRunnable):
             self.signal.update.emit()
 
 
-
 class SJCGuiMain(object):
     def __init__(self):
         self.ThreadPool = QtCore.QThreadPool()
 
+    def __check_for_update(self):
+        """ Checks if a newer version is available and sets update button status accordingly"""
+        versions = [VERSION]
+        ver_links = {}
+        ver_match = re.compile(r'SmartJobClassifier v[0-9]+\.[0-9]+\.[0-9]+')
+        versions_page = requests.get('https://github.com/TheMagicalPlace/JobPostingClassifier/releases')
+        parsed_versions = soup(versions_page.text, "html.parser")
+        for lnk in parsed_versions.find_all('a'):
+            if re.match(ver_match, lnk.text):
+                version = re.findall(r'[0-9]+\.[0-9]+\.[0-9]+', lnk.text)[0]
+                vtuple = tuple([int(_) for _ in version.split('.')])
+                versions.append(vtuple)
+                ver_links[vtuple] = lnk['href']
+
+        if max(versions) != VERSION:
+            self.update_button.setEnabled(True)
+            self.update_button.setText("Update Available!")
+        else:
+            self.update_button.setEnabled(False)
+            self.update_button.setText("Up to Date!")
     def __save_linkedin_info(self,username='',password=''):
+        """saves linkedin user info to the user info json file"""
         pword = base64.b64encode(password.encode('ascii'))
 
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
@@ -71,6 +97,7 @@ class SJCGuiMain(object):
             data.write(json.dumps(dict(setdict)))
 
     def __get_linkedin_info(self):
+        """retrieves linkedin user info from the user info json file"""
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
             setdict = defaultdict(dict, settings)
@@ -88,7 +115,10 @@ class SJCGuiMain(object):
                 data.write(json.dumps(dict(setdict)))
 
     def __update_file_terms(self,file_term):
+        """ Updates valid file terms in the user info json file
 
+
+        This is triggered any time a new search term is used"""
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r+') as data:
             settings = json.loads(data.read())
             setdict = defaultdict(list, settings)
@@ -103,6 +133,8 @@ class SJCGuiMain(object):
         return file_terms
 
     def __toggle_other_tabs(self,state : bool,ignore=()):
+        """Disables non-active tabs when a long running process is executed to prevent execution of incompatible
+        actions (i.e. a job search can't be run at the same time as a combined search)"""
         self.Classify.setEnabled(state)
         self.Search.setEnabled(state)
         self.SearchClassify.setEnabled(state)
@@ -112,6 +144,7 @@ class SJCGuiMain(object):
             enabled.setEnabled(True)
 
     def __get_file_terms(self):
+        """ retrieves valid file terms in the user info json file"""
         with open(os.path.join(os.getcwd(), 'user_information', 'settings.json'), 'r') as data:
             terms = defaultdict(list,json.loads(data.read()))['file_terms']
         if 'None' not in  terms:
@@ -119,6 +152,7 @@ class SJCGuiMain(object):
         return terms
 
     def file_term_dropdown(self,dropdown):
+        """sets up dropdowns for file terms where applicable"""
         _translate = QtCore.QCoreApplication.translate
         for i,term in enumerate(self.__get_file_terms()):
             dropdown.addItem(term)
@@ -139,10 +173,11 @@ class SJCGuiMain(object):
             worker.signals.finished.connect(lambda : self.dl_2_button.setEnabled(True))
             self.ThreadPool.start(worker)
 
-        def __check_for_update():
-            pass
+
+        def __get_update():
+            webbrowser.open('https://github.com/TheMagicalPlace/JobPostingClassifier/issues/new')
         def __report_issue():
-            pass
+            webbrowser.open('https://gitreports.com/issue/TheMagicalPlace/JobPostingClassifier')
         def __exit():
             QtWidgets.qApp.exit()
 
@@ -294,9 +329,9 @@ class SJCGuiMain(object):
         self.report_issue_button = QtWidgets.QPushButton(self.buttton_top_frame)
         self.report_issue_button.setGeometry(QtCore.QRect(int(390*SCALE_FACTOR), int(10*SCALE_FACTOR), int(91*SCALE_FACTOR), int(23*SCALE_FACTOR)))
         self.report_issue_button.setObjectName("report_issue_button")
-        self.usage_button = QtWidgets.QPushButton(self.buttton_top_frame)
-        self.usage_button.setGeometry(QtCore.QRect(int(280*SCALE_FACTOR), int(10*SCALE_FACTOR), int(101*SCALE_FACTOR), int(23*SCALE_FACTOR)))
-        self.usage_button.setObjectName("usage_button")
+        self.update_button = QtWidgets.QPushButton(self.buttton_top_frame)
+        self.update_button.setGeometry(QtCore.QRect(int(280 * SCALE_FACTOR), int(10 * SCALE_FACTOR), int(101 * SCALE_FACTOR), int(23 * SCALE_FACTOR)))
+        self.update_button.setObjectName("update_button")
         self.dl_1_button = QtWidgets.QPushButton(self.buttton_top_frame)
         self.dl_1_button.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(131*SCALE_FACTOR), int(23*SCALE_FACTOR)))
         self.dl_1_button.setObjectName("dl_1_button")
@@ -597,7 +632,7 @@ class SJCGuiMain(object):
 
         self.dl_1_button.clicked.connect(__download_chromedriver)
         self.dl_2_button.clicked.connect(download_geckodriver)
-        self.usage_button.clicked.connect(__check_for_update)
+        self.update_button.clicked.connect(__get_update)
         self.report_issue_button.clicked.connect(__report_issue)
         self.exit_button.clicked.connect(__exit)
 
@@ -740,7 +775,7 @@ class SJCGuiMain(object):
         if True:
             self.search_cont.setObjectName("search_cont")
             self.search_term_input = QtWidgets.QGroupBox(self.search_cont)
-            self.search_term_input.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(110*SCALE_FACTOR), int(231*SCALE_FACTOR), int(71*SCALE_FACTOR)))
+            self.search_term_input.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(110*SCALE_FACTOR), int(231*SCALE_FACTOR), int(81*SCALE_FACTOR)))
             self.search_term_input.setObjectName("search_term_input")
             self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.search_term_input)
             self.verticalLayout_2.setObjectName("verticalLayout_2")
@@ -761,7 +796,7 @@ class SJCGuiMain(object):
             self.search_info.setGeometry(QtCore.QRect(int(10*SCALE_FACTOR), int(10*SCALE_FACTOR), int(351*SCALE_FACTOR), int(331*SCALE_FACTOR)))
             self.search_info.setObjectName("search_info")
             self.file_term_input = QtWidgets.QGroupBox(self.search_cont)
-            self.file_term_input.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(190*SCALE_FACTOR), int(231*SCALE_FACTOR), int(71*SCALE_FACTOR)))
+            self.file_term_input.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(190*SCALE_FACTOR), int(231*SCALE_FACTOR), int(81*SCALE_FACTOR)))
             self.file_term_input.setObjectName("file_term_input")
             self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.file_term_input)
             self.verticalLayout_3.setObjectName("verticalLayout_3")
@@ -783,7 +818,7 @@ class SJCGuiMain(object):
             self.verticalLayout_3.addWidget(self.ft_input)
             self.ft_input.setMaximumHeight(31)
             self.location_container = QtWidgets.QGroupBox(self.search_cont)
-            self.location_container.setGeometry(QtCore.QRect(int(630*SCALE_FACTOR), int(210*SCALE_FACTOR), int(221*SCALE_FACTOR), int(71*SCALE_FACTOR)))
+            self.location_container.setGeometry(QtCore.QRect(int(630*SCALE_FACTOR), int(210*SCALE_FACTOR), int(221*SCALE_FACTOR), int(81*SCALE_FACTOR)))
             self.location_container.setObjectName("location_container")
             self.verticalLayout_23 = QtWidgets.QVBoxLayout(self.location_container)
             self.verticalLayout_23.setObjectName("verticalLayout_23")
@@ -799,7 +834,7 @@ class SJCGuiMain(object):
             self.location_input.setObjectName("location_input")
             self.verticalLayout_23.addWidget(self.location_input)
             self.no_jobs_container = QtWidgets.QGroupBox(self.search_cont)
-            self.no_jobs_container.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(270*SCALE_FACTOR), int(231*SCALE_FACTOR), int(71*SCALE_FACTOR)))
+            self.no_jobs_container.setGeometry(QtCore.QRect(int(370*SCALE_FACTOR), int(270*SCALE_FACTOR), int(231*SCALE_FACTOR), int(81*SCALE_FACTOR)))
             self.no_jobs_container.setInputMethodHints(QtCore.Qt.ImhDigitsOnly)
             self.no_jobs_container.setObjectName("no_jobs_container")
             self.verticalLayout_21 = QtWidgets.QVBoxLayout(self.no_jobs_container)
@@ -891,7 +926,7 @@ class SJCGuiMain(object):
         if True:
             self.search_button_container = QtWidgets.QGroupBox(self.search_cont)
             self.search_button_container.setEnabled(True)
-            self.search_button_container.setGeometry(QtCore.QRect(int(630*SCALE_FACTOR), int(290*SCALE_FACTOR), int(221*SCALE_FACTOR), int(51*SCALE_FACTOR)))
+            self.search_button_container.setGeometry(QtCore.QRect(int(630*SCALE_FACTOR), int(290*SCALE_FACTOR), int(221*SCALE_FACTOR), int(61*SCALE_FACTOR)))
             self.search_button_container.setObjectName("search_button_container")
             self.verticalLayout_30 = QtWidgets.QVBoxLayout(self.search_button_container)
             self.verticalLayout_30.setObjectName("verticalLayout_30")
@@ -1054,6 +1089,7 @@ class SJCGuiMain(object):
     def __setup_train_tab(self):
 
         def get_train_amounts():
+            """retrieves training data counts for the current file term"""
             file_term = self.train_term_input.currentText()
             if file_term != 'None':
                 with sqlite3.connect(os.path.join(os.getcwd(),file_term,f'{file_term}.db')) as db:
@@ -1127,6 +1163,7 @@ class SJCGuiMain(object):
             self.train_button.setEnabled(False)
 
         def __sort_train_button():
+            """handles enabling of manual sorting per file term"""
             if self.train_term_input.currentText() != 'None':
                 self.train_term_input.setEnabled(True)
                 sortwindow = QtWidgets.QMainWindow()
@@ -1162,10 +1199,8 @@ class SJCGuiMain(object):
                                                                no_labels=2,
                                                                mode='train')
 
-            def test(val):
-                print(val)
+            # this all is responsible for updating the progress bar on the gui
             handler.signals.progress.connect(lambda val : self.train_progress.setValue(val))
-            handler.signals.progress.connect(test)
             handler.signals.finished.connect(lambda : self.__toggle_other_tabs(True))
             handler.signals.finished.connect(lambda : self.train_button.setEnabled(True))
             self.ThreadPool.start(handler)
@@ -1360,6 +1395,7 @@ class SJCGuiMain(object):
             self.gridLayout_3.addWidget(self.select_models_button, 0, 1, 1, 1)
             self.gridLayout_3.addWidget(self.select_processing_options_button, 1, 1, 1, 1)
 
+        # used to regularly update no. of each sorted data type
         constworker = WorkerConstantTimer()
         self.ThreadPool.start(constworker)
         constworker.signal.update.connect(get_train_amounts)
@@ -1436,10 +1472,11 @@ class SJCGuiMain(object):
             else:
                 self.run_button.setDisabled(True)
 
-        # TODO hook in classify elements
+
         def __run_combined():
 
             def reactivate():
+                """enables other tabs once operation is complete"""
                 self.run_button.setEnabled(True)
                 self.ft_dropdown_input_2.setEnabled(True)
                 self.__toggle_other_tabs(True)
@@ -1499,6 +1536,7 @@ class SJCGuiMain(object):
 
         # TODO - link with results dipslay
         def __show_results():
+            """opens results window as a seperate gui"""
             resultwindow = QtWidgets.QMainWindow()
             result_ui = ResultsWindow(resultwindow, self.ft_dropdown_input_2.currentText())
             resultwindow.show()
@@ -1764,7 +1802,7 @@ class SJCGuiMain(object):
         self.MainTab.setCurrentIndex(1)
         self.iter_use_default_check.toggled['bool'].connect(self.iter_input.setDisabled)
         self.clf_auto_checkbox_2.toggled['bool'].connect(self.clf_model_input_2.setDisabled)
-
+        self.__check_for_update()
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -1932,7 +1970,7 @@ class SJCGuiMain(object):
         self.MainTab.setTabText(self.MainTab.indexOf(self.SearchClassify),
                                 _translate("MainWindow", "Search + Classify"))
         self.report_issue_button.setText(_translate("MainWindow", "Report an Issue"))
-        self.usage_button.setText(_translate("MainWindow", "Send Usage Info"))
+        self.update_button.setText(_translate("MainWindow", "Send Usage Info"))
         self.dl_1_button.setText(_translate("MainWindow", "Download Chromedriver"))
         self.dl_2_button.setText(_translate("MainWindow", "Download Geckodriver"))
         self.exit_button.setText(_translate("MainWindow", "Exit"))
@@ -1966,7 +2004,6 @@ class SJCGuiMain(object):
         self.neutral_amt_label.setText(_translate("MainWindow", "Neutral"))
         self.bad_amt_label.setText(_translate("MainWindow", "Bad"))
 
-
     def __post_set_predefined_fields(self):
         self.__get_linkedin_info()
 
@@ -1984,12 +2021,14 @@ class SJCGuiMain(object):
         self.clf_auto_checkbox.setChecked(True)
         self.clf_auto_checkbox.setEnabled(False)
         self.clf_model_input.setText("Manual model input not supported in this version")
+
+
 if __name__ == "__main__":
     import sys
 
     PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
     app = QtWidgets.QApplication(sys.argv)
-    SCALE_FACTOR = set_ui_scale()
+
     if True:
         MainWindow = QtWidgets.QMainWindow()
         ui = SJCGuiMain()

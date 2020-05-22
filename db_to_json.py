@@ -54,7 +54,6 @@ def total_size(o, handlers={}, verbose=False):
     return sizeof(o)
 
 
-##### Example call #####
 
 if __name__ == '__main__':
     with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:

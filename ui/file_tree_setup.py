@@ -29,6 +29,7 @@ def file_setup(file_term):
     except FileNotFoundError:
         open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'), 'w')
     finally:
+        # creating tables used by the program for each file term
         with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:
             cursor = connection.cursor()
             for table in ['training','results','unsorted','metadata','model_performance_results']:

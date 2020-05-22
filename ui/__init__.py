@@ -1,5 +1,5 @@
 
-__all__ = ['SJCGuiMain','SCALE_FACTOR']
+__all__ = ['SJCGuiMain','SCALE_FACTOR','ui_app']
 import sys
 from PyQt5 import QtWidgets,QtCore
 from ui.file_tree_setup import file_setup
@@ -19,9 +19,9 @@ def set_ui_scale():
         if moniter_h == 1080:
             scale = 1.0
         elif moniter_h == 1440:
-            scale = 1.25
+            scale = 1.23
         else:
-            scale = 1.55
+            scale = 1.4
     elif sys.platform == 'darwin':
         if moniter_h == 1080:
             scale = 1.0
@@ -32,7 +32,8 @@ def set_ui_scale():
     return scale
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-__qtapp_core = QtWidgets.QApplication(sys.argv)
+
+ui_app = QtWidgets.QApplication(sys.argv)
 SCALE_FACTOR = set_ui_scale()
 
 

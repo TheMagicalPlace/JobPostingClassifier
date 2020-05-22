@@ -28,3 +28,4 @@
 /webdrivers/geckodriver/v0.26.0/
 /job_results_page.ui
 /scrapers/LinkedIn/execute.py
+/sklearn_tools/sklearn_extensions/nltk_corpus_data/

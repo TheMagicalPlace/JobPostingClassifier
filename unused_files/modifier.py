@@ -41,6 +41,6 @@ print(e)
 
 
 
-with open('gui_test.py','w') as gut:
+with open('../ui/train_select.py','w') as gut:
     gut.write(e)
 print(e)

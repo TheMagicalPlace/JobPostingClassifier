@@ -1,22 +1,14 @@
 
-import PyQt5
-from PyQt5 import QtWidgets, QtCore
-from ui import SJCGuiMain
-from sklearn_tools import NLTKUtils
-from sklearn_tools.sklearn_extensions.NLTKUtils import *
 
+from PyQt5 import QtWidgets, QtCore
+import ui as _ui
+
+import sys
 
 if __name__ == '__main__':
-    import sys
 
-    PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-    app = QtWidgets.QApplication(sys.argv)
-
-
-
-    if True:
-        MainWindow = QtWidgets.QMainWindow()
-        ui = SJCGuiMain()
-        ui.setupUi(MainWindow)
-        MainWindow.show()
-        sys.exit(app.exec_())
+    MainWindow = QtWidgets.QMainWindow()
+    ui = _ui.SJCGuiMain()
+    ui.setupUi(MainWindow)
+    MainWindow.show()
+    sys.exit(_ui.ui_app.exec_())
