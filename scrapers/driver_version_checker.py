@@ -45,6 +45,7 @@ def driverversionchecker():
                         executable_path=os.path.join(os.getcwd(), 'webdrivers', 'chromedriver', driver_info['version'],
                                              'chromedriver'))
                 driver.get("https://www.google.com")
+                driver.close()
             except WebDriverException:
                 driver,browser, version = set_driver_version()
                 setdict['driver_version'] = {'browser': browser, 'version': version}
@@ -61,10 +62,14 @@ def set_driver_version():
                                       key = lambda version : int(version[1]) if version[0][0] == 'v' else int(version[0]))):
             version_try_order.insert(i+2*j,".".join(ver))
 
-
-    while version_try_order:
-        version_order.append((version_try_order.pop(),version_try_order.pop()))
-    print(version_order)
+    if len(version_try_order)%2:
+        while version_try_order:
+            ver = version_try_order.pop()
+            version_order.append((ver,ver))
+    else:
+        while version_try_order:
+            version_order.append((version_try_order.pop(),version_try_order.pop()))
+        print(version_order)
 
     for versions in version_order:
         try:

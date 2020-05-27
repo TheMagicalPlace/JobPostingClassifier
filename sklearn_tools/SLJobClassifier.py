@@ -5,7 +5,7 @@ import os
 import imblearn
 import pandas as pd
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, QRunnable, QObject
-from pickle import load
+from joblib import load
 
 from sklearn_tools import PipelineComponents
 from sklearn_tools import ClassificationTrainingTool
@@ -187,8 +187,12 @@ class ClassificationInterface():
             model = cur.execute("""SELECT MAX(accuracy),unique_id from model_performance_results 
                             WHERE classification_labels = ?""",(self.no_labels,)).fetchone()
             model_id = list(model)[1]
-        print(os.path.join(os.getcwd(),self.file_term,'models',model_id))
+
         model = load(os.path.join(os.getcwd(),self.file_term,'models',model_id))
+        #print(os.path.join(os.getcwd(),self.file_term,'models',model_id))
+        #with open(os.path.join(os.getcwd(),self.file_term,'models',model_id), 'rb') as pickle_file:
+        #    model = load(pickle_file)
+
 
         clfh = ClassificationHandler(self.file_term,self.database,self.mode,self.no_labels)
         clfh.classify_results(model)
