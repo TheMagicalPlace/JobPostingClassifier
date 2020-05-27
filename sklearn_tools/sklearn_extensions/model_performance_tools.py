@@ -260,6 +260,10 @@ class ClassificationTrainingTool():
         return clf_descr, accuracy, train_time, test_time
 
     def hyperparameter_tuning(self,model : str,clf=None):
+        # NOT INCLUDED IN RELEASE DUE TO ISSUES WITH MULTIPROCESSING
+        if True:
+            return clf
+
         """Tuning of parameters to valid models using a cross-validation approach (GridSearchCV)"""
         if model in ['LogisticRegressionCV','RidgeClassifierCV','XGBClassifier','ElasticNetClassifier']:
             return clf,0

@@ -1904,7 +1904,7 @@ class SJCGuiMain(object):
                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                            "p, li { white-space: pre-wrap; }\n"
                                            "</style></head><body style=\" font-family:\'MingLiU_HKSCS-ExtB\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">75</span></p></body></html>"))
+                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">40</span></p></body></html>"))
         self.iter_use_default_check.setText(_translate("MainWindow", "Use Default (reccomended)"))
         self.train_info.setHtml(_translate("MainWindow",
                                            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
@@ -1923,7 +1923,7 @@ class SJCGuiMain(object):
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">File Term:</span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">This should be the same term as the search term used previously if this is for completely new models, otherwise use the file term for which you want to update models for.</span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">Iterations Per Round:</span></p>\n"
-                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">The number of times to train the models on the data, higher numbers will increase model accuracy, but take longer. Between 75-200 is reccomended, with minimal improvment for any higher amount. </span></p>\n"
+                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">The number of times to train the models on the data, higher numbers will increase model accuracy, but take longer. Between 25-150 is reccomended, with minimal improvment for any higher amount. </span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\"> </span></p></body></html>"))
         self.select_processing_options_button.setText(
             _translate("MainWindow", "Modify Data Preprocessing (Advanced)"))
