@@ -1,7 +1,7 @@
 import os
 from typing import Any, Iterable
 
-from joblib import dump
+from pickle import dump
 from numpy import product
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import HashingVectorizer, CountVectorizer, TfidfTransformer

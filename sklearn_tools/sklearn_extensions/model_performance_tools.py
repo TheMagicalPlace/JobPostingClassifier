@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 from joblib import dump
-from matplotlib import pyplot as plt
+
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.utils.extmath import density
@@ -50,7 +50,7 @@ class ClassificationTrainingTool():
         self.uid_base = "_".join([str(len(self.dataset['label'].unique())),str(self.stemmer),str(self.transform),str(self.vectorizer)])
         self.best_score_ledger = {}
         self.active_models =['LinearSVC',
-                          'LogisticRegressionCV',
+                          #'LogisticRegressionCV',
                           'LogisticRegression',
                           'Perceptron',
                           #'RidgeClassifierCV',
@@ -58,7 +58,8 @@ class ClassificationTrainingTool():
                          #'PassiveAggressiveClassifier',
                          'ElasticNetClassifier',
                          'RandomForestClassifier',
-                             'XGBClassifier',]
+                             #'XGBClassifier',
+            ]
 
     def get_best_model_configs(self):
         """Sets the 'to-beat' model score for each classification method, used by the training controller
@@ -194,32 +195,7 @@ class ClassificationTrainingTool():
                 cur.execute("UPDATE model_performance_results SET accuracy = ?,f1_score = ? WHERE unique_id = ?",
                             (self.best_score_ledger[model][0],self.best_score_ledger[model][1],uid))
 
-        # this is pretty much never going to be used
-        if plot==True:
 
-            scores = []
-            times = []
-            for model_name, best_stats in results.items():
-                _, score, training_time, test_time = best_stats
-                scores.append(score)
-                times.append(np.array(training_time) / np.max(training_time)
-                             + np.array(test_time) / np.max(test_time))
-            indices = np.arange(len(active_models))
-
-            plt.figure(figsize=(12, 8))
-            plt.title("Score")
-            plt.barh(indices, scores, .2, label="score", color='navy')
-            plt.barh(indices + .3, times, .2, label="run time", color='darkorange')
-            plt.yticks(())
-            plt.legend(loc='best')
-            plt.subplots_adjust(left=.25)
-            plt.subplots_adjust(top=.95)
-            plt.subplots_adjust(bottom=.05)
-
-            for i, c in zip(indices, active_models):
-                plt.text(-.3, i, c)
-
-            plt.show()
 
     def train_models(self, clf, silent, feature_names=None, target_names=None, live=False):
         """Benchmarks and outputs detailed results to console

@@ -32,7 +32,7 @@ class LIClient():
         self.page = 1
 
     def driver_startup(self):
-        """launches the webdriver & navigated to indeed homepage"""
+        """launches the webdriver & navigated to Indeed homepage"""
         self.driver = driverversionchecker()
         self.scraper = _ScraperLinkedin(self.driver,
                                         self.database,

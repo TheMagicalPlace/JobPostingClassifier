@@ -54,7 +54,7 @@ def opening(**options):
     Welcome to my scikit-learn based Smart Job Classifier!
     
     Currently this program consists of two seperate parts, the first, which can be accessed by using the
-    search option will allow you to search and save job postings off of either indeed of linkden
+    search option will allow you to search and save job postings off of either Indeed of linkden
     based on a given search term. The second option "classify" sorts any unclassified jobs into either "good" or "bad" based
     on user-supplied job data. Alternatively, using the all command will allow you to search and classify
     jobs in the same command.

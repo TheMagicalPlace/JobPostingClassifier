@@ -41,7 +41,7 @@ class IndeedClient:
         self.driver.close()
 
     def driver_startup(self):
-        """launches the webdriver & navigated to indeed homepage"""
+        """launches the webdriver & navigated to Indeed homepage"""
 
 
         self.driver = scrapers._driverversionchecker()
@@ -52,6 +52,7 @@ class IndeedClient:
                                               no_of_calls=self.jobs_to_find,
                                               file_path_args=self.file_term)
         self.driver.get('https://www.indeed.com/')
+        self.driver.maximize_window()
 
     def navigate_to_jobs(self,job_desc,location='United States'):
         """ Inputs search term + location and navigates to results"""
@@ -94,10 +95,11 @@ class IndeedClient:
                 a = self.driver.switch_to.alert()
                 a.dismiss()
                 ele.click()
-
+            except ElementNotInteractableException:
+                continue
             # waiting for each panel to load
             try:
-                WebDriverWait(self.driver, 30).until(EC.element_to_be_clickable((By.ID, "vjs-desc")))
+                WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.ID, "vjs-desc")))
             except TimeoutException:
                 continue
 
@@ -144,5 +146,7 @@ class IndeedClient:
                 time.sleep(3)
 
 if __name__ == '__main__':
-    client = IndeedClient("operator","operator","United States",10)
+    import os
+    os.chdir("C:\\Users\\themagicalplace\\PycharmProjects\\JobPostingClassifier")
+    client = IndeedClient("Chemical Engineer","Chemical Engineer","United States",10)
     client()

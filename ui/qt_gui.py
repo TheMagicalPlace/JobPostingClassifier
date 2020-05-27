@@ -179,6 +179,7 @@ class SJCGuiMain(object):
         def __report_issue():
             webbrowser.open('https://gitreports.com/issue/TheMagicalPlace/JobPostingClassifier')
         def __exit():
+            self.ThreadPool.clear()
             QtWidgets.qApp.exit()
 
 

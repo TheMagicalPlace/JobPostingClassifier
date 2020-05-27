@@ -29,3 +29,8 @@
 /job_results_page.ui
 /scrapers/LinkedIn/execute.py
 /sklearn_tools/sklearn_extensions/nltk_corpus_data/
+/pyinstaller_files/vcomp140.dll
+/build/
+/dist/
+/Chemical Operator/
+/pyinstaller_files/runs.sh

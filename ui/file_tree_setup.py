@@ -3,12 +3,9 @@ import os
 import sqlite3
 
 
-def file_setup(file_term):
+def file_setup(file_term=None):
     """Sets up the file structure used by the program for each search term"""
-    try:
-        os.mkdir(os.path.join(os.getcwd(),file_term))
-    except FileExistsError:
-        pass
+
     try:
         os.mkdir(os.path.join(os.getcwd(), 'webdrivers'))
     except FileExistsError:
@@ -24,61 +21,67 @@ def file_setup(file_term):
     else:
         with open(os.path.join(os.getcwd(), 'user_information','settings.json'),'w') as st:
             st.write(json.dumps({}))
-    try:
-        open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'))
-    except FileNotFoundError:
-        open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'), 'w')
-    finally:
-        # creating tables used by the program for each file term
-        with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:
-            cursor = connection.cursor()
-            for table in ['training','results','unsorted','metadata','model_performance_results']:
-                try:
-                    if table == 'unsorted':
-                        cursor.execute("""CREATE TABLE unsorted 
-                        (unique_id TEXT PRIMARY KEY,          
-                        job_title text,
-                        description text)""")
-
-                    if table == 'training':
-                        cursor.execute("""CREATE TABLE training 
-                        (unique_id TEXT PRIMARY KEY,          
-                        label text,
-                        job_title text,
-                        description text)""")
-
-                    elif table == 'metadata':
-                        cursor.execute("""CREATE TABLE metadata 
-                        (unique_id TEXT PRIMARY KEY,
-                        search_term TEXT,
-                        link TEXT, 
-                        location TEXT, 
-                        company TEXT, 
-                        date_posted TEXT)""")
-
-                    if table == 'results':
-                        cursor.execute("""CREATE TABLE results 
-                        (unique_id TEXT PRIMARY KEY,         
-                        label text,
-                        job_title text,
-                        description text)""")
-                    if table == 'model_performance_results':
-                        cursor.execute("""CREATE TABLE model_performance_results 
-                        (unique_id TEXT PRIMARY KEY,         
-                        stemmer text,
-                        vectorizer text,
-                        transformer text,
-                        model text,
-                        f1_score REAL,
-                        accuracy REAL,
-                        classification_labels INT)""")
-                except sqlite3.OperationalError:
-                    pass
-
+    if file_term is not None:
         try:
-            os.mkdir(os.path.join(os.getcwd(),file_term,'models'))
+            os.mkdir(os.path.join(os.getcwd(), file_term))
         except FileExistsError:
             pass
+        try:
+            open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'))
+        except FileNotFoundError:
+            open(os.path.join(os.getcwd(), file_term, f'{file_term}.db'), 'w')
+        finally:
+
+            # creating tables used by the program for each file term
+            with sqlite3.connect(os.path.join(os.getcwd(), file_term, f'{file_term}.db')) as connection:
+                cursor = connection.cursor()
+                for table in ['training','results','unsorted','metadata','model_performance_results']:
+                    try:
+                        if table == 'unsorted':
+                            cursor.execute("""CREATE TABLE unsorted 
+                            (unique_id TEXT PRIMARY KEY,          
+                            job_title text,
+                            description text)""")
+
+                        if table == 'training':
+                            cursor.execute("""CREATE TABLE training 
+                            (unique_id TEXT PRIMARY KEY,          
+                            label text,
+                            job_title text,
+                            description text)""")
+
+                        elif table == 'metadata':
+                            cursor.execute("""CREATE TABLE metadata 
+                            (unique_id TEXT PRIMARY KEY,
+                            search_term TEXT,
+                            link TEXT, 
+                            location TEXT, 
+                            company TEXT, 
+                            date_posted TEXT)""")
+
+                        if table == 'results':
+                            cursor.execute("""CREATE TABLE results 
+                            (unique_id TEXT PRIMARY KEY,         
+                            label text,
+                            job_title text,
+                            description text)""")
+                        if table == 'model_performance_results':
+                            cursor.execute("""CREATE TABLE model_performance_results 
+                            (unique_id TEXT PRIMARY KEY,         
+                            stemmer text,
+                            vectorizer text,
+                            transformer text,
+                            model text,
+                            f1_score REAL,
+                            accuracy REAL,
+                            classification_labels INT)""")
+                    except sqlite3.OperationalError:
+                        pass
+
+            try:
+                os.mkdir(os.path.join(os.getcwd(),file_term,'models'))
+            except FileExistsError:
+                pass
 
 
 
