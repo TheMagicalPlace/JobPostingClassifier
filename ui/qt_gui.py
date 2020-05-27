@@ -1801,7 +1801,7 @@ class SJCGuiMain(object):
         MainWindow.setStatusBar(self.statusbar)
         self.retranslateUi(MainWindow)
         self.__post_set_predefined_fields()
-        self.MainTab.setCurrentIndex(1)
+        self.MainTab.setCurrentIndex(0)
         self.iter_use_default_check.toggled['bool'].connect(self.iter_input.setDisabled)
         self.clf_auto_checkbox_2.toggled['bool'].connect(self.clf_model_input_2.setDisabled)
         self.__check_for_update()
@@ -1815,10 +1815,11 @@ class SJCGuiMain(object):
                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                            "p, li { white-space: pre-wrap; }\n"
                                            "</style></head><body style=\" font-family:\'MS Shell Dlg 2\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Welcome to SmartJobClassifier, a scikit-learn based application used to automatically download and sort through online job board postings. If this is your first time using this application you will need to download either chromedriver (if you use Chrome) or geckodriver (if you use Firefox) using the corresponding buttons in the top panel. These can also be used to download the latest version when a newer one is released. Once this is done, you should start on the \'Search\' tab, and from there go to \'Train\' and then \'Classify\'. Detailed instructions are given on each tab, as well as within the readme. </span></p>\n"
+                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">Welcome to SmartJobClassifier, a scikit-learn based application used to automatically download and sort through online job board postings. If this is your first time using this application you will need to download either chromedriver (preferred) and/or geckodriver (if you use Firefox) using the corresponding buttons in the top panel. These can also be used to download the latest version when a newer one is released. Once this is done, you should start on the \'Search\' tab, and from there go to \'Train\' and then \'Classify\'. Detailed instructions are given on each tab, as well as within the readme. </span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">If you\'re willing to do so, please send over usage information using the \'Sent Usage Info\' button in the top panel, all this does is sent me a notification that a new user is using this application, and lets me get an idea of how many people are using this. If you run into a bug, you can use \'Report an Issue\' to send me a brief description of what you were doing and what the issue is.</span></p>\n"
-                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">If you would like to contribute, you can either visit the repository at https://github.com/TheMagicalPlace/JobPostingClassifier for more information. While all feedback is appreciated, I especially could use your any training data, since having a wider variety of results will allow me to keep improving this application.</span></p>\n"
-                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">If you like my work be sure to give me a software development job and/or visit my repo at www.olivegarden.com. </span></p></body></html>"))
+                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:12pt;\">If you would like to contribute, you can visit the repository at https://github.com/TheMagicalPlace/JobPostingClassifier for more information. While all feedback is appreciated, I especially could use your any training data, since having a wider variety of results will allow me to keep improving this application.</span></p>\n"
+                                           "</body></html>"))
+
         self.MainTab.setTabText(self.MainTab.indexOf(self.Info), _translate("MainWindow", "Info"))
         self.st_label.setText(_translate("MainWindow", "Search Term"))
         self.st_input.setHtml(_translate("MainWindow",
@@ -1904,7 +1905,7 @@ class SJCGuiMain(object):
                                            "<html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
                                            "p, li { white-space: pre-wrap; }\n"
                                            "</style></head><body style=\" font-family:\'MingLiU_HKSCS-ExtB\'; font-size:8.25pt; font-weight:400; font-style:normal;\">\n"
-                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">75</span></p></body></html>"))
+                                           "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:\'MS Shell Dlg 2\'; font-style:italic;\">40</span></p></body></html>"))
         self.iter_use_default_check.setText(_translate("MainWindow", "Use Default (reccomended)"))
         self.train_info.setHtml(_translate("MainWindow",
                                            "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
@@ -1923,7 +1924,7 @@ class SJCGuiMain(object):
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">File Term:</span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">This should be the same term as the search term used previously if this is for completely new models, otherwise use the file term for which you want to update models for.</span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">Iterations Per Round:</span></p>\n"
-                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">The number of times to train the models on the data, higher numbers will increase model accuracy, but take longer. Between 75-200 is reccomended, with minimal improvment for any higher amount. </span></p>\n"
+                                           "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:8px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\">The number of times to train the models on the data, higher numbers will increase model accuracy, but take longer. Between 25-150 is reccomended, with minimal improvment for any higher amount. </span></p>\n"
                                            "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-size:10pt;\"> </span></p></body></html>"))
         self.select_processing_options_button.setText(
             _translate("MainWindow", "Modify Data Preprocessing (Advanced)"))
