@@ -10,13 +10,13 @@
 /envn2/
 /Infersent/models.py
 /vectors/glove.6B.100d.magnitude
-/sklearn_tools/featurization.py
+/src/sklearn_tools/featurization.py
 /ex.py
 /Models/
-/sklearn_tools/encoder/
-/sklearn_tools/Infersent/
-/sklearn_tools/GloVe/
-/sklearn_tools/vectors/
+/src/sklearn_tools/encoder/
+/src/sklearn_tools/Infersent/
+/src/sklearn_tools/GloVe/
+/src/sklearn_tools/vectors/
 /Chemical Engineer/models/
 /Chemical Engineer/models/model_files/
 /Chemical Engineer/models/old/
@@ -27,10 +27,10 @@
 /webdrivers/geckodriver/v0.25.0/
 /webdrivers/geckodriver/v0.26.0/
 /job_results_page.ui
-/scrapers/LinkedIn/execute.py
-/sklearn_tools/sklearn_extensions/nltk_corpus_data/
+/src/scrapers/LinkedIn/execute.py
+/src/sklearn_tools/sklearn_extensions/nltk_corpus_data/
 /pyinstaller_files/vcomp140.dll
 /build/
 /dist/
 /Chemical Operator/
-/pyinstaller_files/runs.sh
+/runs.sh
